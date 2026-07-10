@@ -45,6 +45,18 @@ export class ApiService {
     return this.devices.findOneAndUpdate({ devId }, { $set: { devId, ...rest } }, { upsert: true, new: true }).lean();
   }
 
+  /** Delete a device and all of its data. */
+  async deleteDevice(devId: string) {
+    await Promise.all([
+      this.telemetry.deleteMany({ "meta.devId": devId }),
+      this.aggregate.deleteMany({ "meta.devId": devId }),
+      this.events.deleteMany({ devId }),
+      this.predictions.deleteMany({ devId }),
+      this.devices.deleteOne({ devId }),
+    ]);
+    return { ok: true, devId };
+  }
+
   /** Latest telemetry point for one device, or for every device. */
   async latest(devId?: string) {
     if (devId) {

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Post, Query, UseGuards } from "@nestjs/common";
 import { ApiService, type RangeQuery } from "./api.service.js";
 import { JwtAuthGuard } from "../auth/jwt.guard.js";
 import { AlertsService } from "../alerts/alerts.service.js";
@@ -39,6 +39,12 @@ export class ApiController {
   @UseGuards(JwtAuthGuard)
   createDevice(@Body() body: Record<string, unknown>) {
     return this.api.upsertDevice(body);
+  }
+
+  @Delete("devices/:devId")
+  @UseGuards(JwtAuthGuard)
+  deleteDevice(@Param("devId") devId: string) {
+    return this.api.deleteDevice(devId);
   }
 
   @Get("latest")
