@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import Dashboard from "./pages/Dashboard.jsx";
 import Devices from "./pages/Devices.jsx";
+import DeviceDetail from "./pages/DeviceDetail.jsx";
 import ManualEntry from "./pages/ManualEntry.jsx";
 import Reports from "./pages/Reports.jsx";
 import Research from "./pages/Research.jsx";
@@ -273,6 +274,7 @@ export default function App() {
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/devices" element={<Devices />} />
+              <Route path="/devices/:devId" element={<DeviceDetail />} />
               <Route path="/manual" element={<ManualEntry />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/research" element={<Research />} />

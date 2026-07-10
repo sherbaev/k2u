@@ -15,6 +15,8 @@ export const api = {
   predictions: (params) => http.get("/api/predictions", { params }).then((r) => r.data),
   compliance: (params) => http.get("/api/compliance", { params }).then((r) => r.data),
   createDevice: (body) => http.post("/api/devices", body).then((r) => r.data),
+  getDevice: (devId) => http.get(`/api/devices/${encodeURIComponent(devId)}`).then((r) => r.data),
+  patchDevice: (devId, body) => http.patch(`/api/devices/${encodeURIComponent(devId)}`, body).then((r) => r.data),
   deleteDevice: (devId) => http.delete(`/api/devices/${encodeURIComponent(devId)}`).then((r) => r.data),
   createSite: (body) => http.post("/api/sites", body).then((r) => r.data),
   seedDemo: (days) => http.post("/api/seed/demo", { days }).then((r) => r.data),

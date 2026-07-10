@@ -176,6 +176,52 @@ export function weeklyCompliance(agg: AggPoint[]) {
   return out;
 }
 
+/** Generate one fresh (telemetry, aggregate) point "now" for the live simulator. */
+export function generateOnePoint(
+  spec: Pick<SeedDeviceSpec, "deviceType" | "baseK2u" | "seed">,
+  now: number,
+): { telemetry: TelemetryPoint; aggregate: AggPoint } {
+  const r = rng(spec.seed + Math.floor(now / 3_600_000)); // varies per hour
+  const isPv = spec.deviceType === "pv_inverter";
+  const dayFrac = ((now / DAY) % 1 + 1) % 1;
+  const hour = dayFrac * 24;
+  const dailyAmp = (isPv ? 0.45 : 0.3) * spec.baseK2u;
+  let k2u = spec.baseK2u + dailyAmp * Math.sin(2 * Math.PI * dayFrac + (isPv ? -1.2 : 0.4)) + 0.18 * spec.baseK2u * gauss(r);
+  if (r() < 0.06) k2u += 0.6 + r() * 2.0; // rare excursion
+  k2u = Math.min(Math.max(k2u, 0.05), 8);
+
+  const doy = (now / DAY) % 365;
+  const tAmb = (isPv ? 16 : 18) + (isPv ? 14 : 10) * Math.sin((2 * Math.PI * (doy - 100)) / 365) +
+    (isPv ? 8 : 5) * Math.sin(2 * Math.PI * dayFrac - Math.PI / 2);
+  const load = isPv ? Math.max(0, Math.sin((Math.PI * (hour - 6)) / 12)) * (0.65 + 0.2 * r())
+    : Math.min(1, Math.max(0.2, 0.6 + 0.08 * Math.sin(2 * Math.PI * dayFrac)));
+  const temp = tAmb + (isPv ? 22 : 18) * load * load + (isPv ? 1.6 : 1.2) * k2u * k2u * 0.15;
+  const ts = new Date(now);
+
+  const base = 226;
+  const eps = k2u / 100;
+  const ua = base * (1 + eps * 0.9), ub = base * (1 - eps * 0.5), uc = base * (1 - eps * 0.4);
+  const line = lineFromPhaseNominal(ua, ub, uc);
+  const res = k2uFromVoltages(line.uab, line.ubc, line.uca);
+  const k = res.valid ? res.k2u : k2u;
+
+  return {
+    telemetry: {
+      ts, u_a: r2(ua), u_b: r2(ub), u_c: r2(uc),
+      u_ab: r2(line.uab), u_bc: r2(line.ubc), u_ca: r2(line.uca),
+      k2u: r3(k), phi2: r1(res.valid ? res.phi2 : 180), temp: r1(temp), status: classify(k),
+    },
+    aggregate: {
+      ts, k2u_avg: r3(k2u), k2u_min: r3(Math.max(0.05, k2u - 0.3)), k2u_max: r3(k2u + 0.3), k2u_p95: r3(k2u + 0.25),
+      exceed_2pct_s: k2u >= 2 ? 600 : 0, exceed_4pct_s: k2u >= 4 ? 600 : 0,
+      temp_mean: r1(temp), temp_max: r1(temp + 2), load_factor: r3(load),
+    },
+  };
+}
+const r1 = (v: number) => Math.round(v * 10) / 10;
+const r2 = (v: number) => Math.round(v * 100) / 100;
+const r3 = (v: number) => Math.round(v * 1000) / 1000;
+
 export function percentile(sorted: number[], p: number): number {
   if (sorted.length === 0) return 0;
   const idx = (p / 100) * (sorted.length - 1);

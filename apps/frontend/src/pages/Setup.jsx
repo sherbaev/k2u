@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Box,
@@ -35,7 +36,14 @@ import {
   ArrowRight,
   Gauge,
   ListChecks,
+  Waypoints,
+  Download,
+  Github,
+  Youtube,
+  PlayCircle,
 } from "lucide-react";
+import { downloadFirmwareZip } from "../lib/firmwareGen.js";
+import WiringDiagram from "../components/WiringDiagram.jsx";
 
 const CORE_COMPONENTS = [
   { model: "ESP32-WROOM-32 DevKit V1", qty: "1", purpose: "K₂U compute, Wi-Fi, MQTT", price: "6" },
@@ -99,6 +107,49 @@ cp include/secrets.h.example include/secrets.h
 
 pio run -e esp32dev -t upload
 pio device monitor`;
+
+const INSTALL_FLASH_STEPS = `# 1. Install VS Code + the PlatformIO IDE extension
+#    https://platformio.org/install/ide?install=vscode
+
+# 2. Clone the firmware repository
+git clone https://github.com/sherbaev/k2u
+cd k2u/apps/firmware
+
+# 3. Copy the downloaded config into include/
+#    (unzip the archive from "Download firmware" above)
+cp ~/Downloads/firmware-*/include/config.h  include/config.h
+cp ~/Downloads/firmware-*/include/secrets.h include/secrets.h
+# then edit include/secrets.h with your Wi-Fi credentials
+
+# 4. Connect the ESP32 over USB, then build + flash
+pio run -e esp32dev -t upload
+pio device monitor
+
+# Optional: run the K2U math unit tests on your PC (no hardware needed)
+pio test -e native`;
+
+const RELATED_VIDEOS = [
+  {
+    title: "ESP32 + PZEM-004T tutorial",
+    description: "Wiring and reading a PZEM-004T energy meter over UART from an ESP32.",
+    url: "https://www.youtube.com/results?search_query=ESP32+PZEM-004T+tutorial",
+  },
+  {
+    title: "ESP32 MQTT publish tutorial",
+    description: "Connecting an ESP32 to Wi-Fi and publishing sensor data over MQTT.",
+    url: "https://www.youtube.com/results?search_query=ESP32+MQTT+publish+tutorial",
+  },
+  {
+    title: "PlatformIO ESP32 getting started",
+    description: "Installing PlatformIO, creating a project, and flashing an ESP32 board.",
+    url: "https://www.youtube.com/results?search_query=platformio+esp32+getting+started",
+  },
+  {
+    title: "Three-phase voltage unbalance explained",
+    description: "Background on negative-sequence voltage unbalance (K₂U) and why it matters.",
+    url: "https://www.youtube.com/results?search_query=three+phase+voltage+unbalance+K2U",
+  },
+];
 
 function CodeBlock({ children }) {
   return (
@@ -189,6 +240,22 @@ export default function Setup() {
   const electronicsTotal = priceRows(CORE_COMPONENTS);
   const enclosureTotal = priceRows(ENCLOSURE_COMPONENTS);
   const perNodeTotal = electronicsTotal + enclosureTotal;
+  const [firmwareError, setFirmwareError] = useState("");
+
+  async function handleDownloadStarterFirmware() {
+    setFirmwareError("");
+    try {
+      await downloadFirmwareZip({
+        devId: "K2U-01",
+        siteId: "SITE-01",
+        deviceType: "pv_inverter",
+        telemetryPeriodSec: 10,
+        location: {},
+      });
+    } catch (err) {
+      setFirmwareError(err?.message || "Could not build the firmware archive.");
+    }
+  }
 
   return (
     <Box sx={{ maxWidth: 1080, mx: "auto" }}>
@@ -286,12 +353,41 @@ export default function Setup() {
         </CardContent>
       </Card>
 
+      {/* Wiring diagram */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <SectionHeading
+            icon={<Waypoints size={19} />}
+            title="Wiring diagram"
+            subtitle="ESP32 hub, 3× PZEM-004T on a level-shifted Modbus bus, DS3231 + OLED on I²C, HLK-PM01 power."
+          />
+
+          <WiringDiagram />
+
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+            Each PZEM-004T taps one phase-to-neutral pair (L1–N, L2–N, L3–N, ~220 V) and shares a
+            single Modbus/UART bus back to the ESP32 through a 5 V↔3.3 V level shifter. The DS3231
+            RTC and the 0.96″ OLED share the I²C bus (SDA/SCL) at addresses 0x68 and 0x3C. An
+            isolated HLK-PM01 (220 V→5 V) powers the ESP32 and, through the level shifter, the PZEM
+            logic side.
+          </Typography>
+
+          <Alert severity="error" icon={<ShieldAlert size={20} />} variant="outlined" sx={{ mt: 2 }}>
+            <AlertTitle sx={{ fontWeight: 700 }}>Mains is lethal — electrician only</AlertTitle>
+            Everything orange in the diagram above (L1/L2/L3/N taps and the HLK-PM01 AC input) is
+            220–380 V mains. Wiring must be done by a <strong>licensed electrician</strong> with the
+            panel <strong>de-energised</strong>. Everything else (ESP32, PZEM data bus, I²C, DC
+            power) is low-voltage and safe to prototype on a bench.
+          </Alert>
+        </CardContent>
+      </Card>
+
       {/* Wiring */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <SectionHeading
             icon={<Cable size={19} />}
-            title="Wiring"
+            title="Wiring — step by step"
             subtitle="Shared Modbus bus for the 3 PZEMs, I²C for RTC + display, phase-to-neutral taps only."
           />
 
@@ -394,6 +490,81 @@ export default function Setup() {
         </CardContent>
       </Card>
 
+      {/* Download firmware */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <SectionHeading
+            icon={<Download size={19} />}
+            title="Download firmware"
+            subtitle="Grab a starter config bundle, or build the firmware straight from source."
+          />
+
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ mb: firmwareError ? 1.5 : 2 }}>
+            <Button
+              variant="contained"
+              startIcon={<Download size={16} />}
+              onClick={handleDownloadStarterFirmware}
+            >
+              Download firmware (.zip)
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<Github size={16} />}
+              component="a"
+              href="https://github.com/sherbaev/k2u/tree/main/apps/firmware"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              View firmware source on GitHub
+            </Button>
+          </Stack>
+
+          {firmwareError && (
+            <Alert severity="error" variant="outlined" sx={{ mb: 2 }}>
+              {firmwareError}
+            </Alert>
+          )}
+
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            The .zip contains a generic <code>include/config.h</code> + <code>include/secrets.h</code>{" "}
+            pair (device <code>K2U-01</code> on <code>SITE-01</code>) — enough to build and flash a
+            bench unit right away. Every registered device also has its own{" "}
+            <strong>personalized</strong> firmware bundle, pre-filled with its real{" "}
+            <code>site_id</code>/<code>dev_id</code>, available from its{" "}
+            <Button size="small" variant="text" onClick={() => navigate("/devices")} sx={{ px: 0.5, minWidth: 0 }}>
+              device page
+            </Button>
+            .
+          </Typography>
+
+          <Typography variant="overline" color="text.secondary" sx={{ fontWeight: 700 }}>
+            Install &amp; flash (PlatformIO)
+          </Typography>
+          <Box sx={{ mt: 0.75, mb: 2 }}>
+            <CodeBlock>{INSTALL_FLASH_STEPS}</CodeBlock>
+          </Box>
+
+          <List sx={{ py: 0 }}>
+            {[
+              "Install VS Code and the PlatformIO IDE extension.",
+              "Clone the firmware repository from GitHub.",
+              "Copy the downloaded config.h + secrets.h into apps/firmware/include/, then fill in your Wi-Fi credentials.",
+              "Connect the ESP32 over USB and run pio run -e esp32dev -t upload, then pio device monitor to watch it boot.",
+              "Optional: verify the K2U / GOST math on a PC first with pio test -e native — no hardware required.",
+            ].map((step, i) => (
+              <ListItem key={i} alignItems="flex-start" sx={{ px: 0, py: 0.5 }}>
+                <ListItemAvatar sx={{ minWidth: 40 }}>
+                  <Avatar sx={{ width: 26, height: 26, fontSize: "0.8rem", bgcolor: "primary.main" }}>
+                    {i + 1}
+                  </Avatar>
+                </ListItemAvatar>
+                <ListItemText primary={<Typography variant="body2">{step}</Typography>} />
+              </ListItem>
+            ))}
+          </List>
+        </CardContent>
+      </Card>
+
       {/* Connect to this system */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
@@ -449,6 +620,75 @@ export default function Setup() {
             </Button>{" "}
             page with the same IDs — the node's telemetry will attach to it automatically.
           </Alert>
+        </CardContent>
+      </Card>
+
+      {/* Related videos / learn more */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <SectionHeading
+            icon={<Youtube size={19} />}
+            title="Related videos / learn more"
+            subtitle="A head start if you're new to ESP32, PZEM-004T, PlatformIO, or voltage unbalance."
+          />
+
+          <Grid container spacing={1.5}>
+            {RELATED_VIDEOS.map((v) => (
+              <Grid item xs={12} sm={6} key={v.title}>
+                <Paper
+                  variant="outlined"
+                  component="a"
+                  href={v.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  sx={{
+                    p: 1.75,
+                    borderRadius: 2,
+                    height: "100%",
+                    display: "flex",
+                    gap: 1.25,
+                    alignItems: "flex-start",
+                    textDecoration: "none",
+                    color: "inherit",
+                    transition: "border-color 0.15s ease, background-color 0.15s ease",
+                    "&:hover": {
+                      borderColor: "primary.main",
+                      bgcolor: (t) => (t.palette.mode === "dark" ? "rgba(255,255,255,0.03)" : "rgba(15,23,42,0.02)"),
+                    },
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 34,
+                      height: 34,
+                      borderRadius: "50%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      bgcolor: (t) => (t.palette.mode === "dark" ? "rgba(255,255,255,0.06)" : "rgba(15,23,42,0.05)"),
+                      color: "error.main",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <PlayCircle size={18} />
+                  </Box>
+                  <Box>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                      {v.title}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {v.description}
+                    </Typography>
+                  </Box>
+                </Paper>
+              </Grid>
+            ))}
+          </Grid>
+
+          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1.5 }}>
+            These open a YouTube search results page in a new tab — we don't pin specific videos, so
+            you always land on the freshest, best-rated tutorials.
+          </Typography>
         </CardContent>
       </Card>
 

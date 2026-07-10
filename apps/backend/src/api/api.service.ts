@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
+import { deviceStatus } from "./device-status.js";
 import { Telemetry } from "../schemas/telemetry.schema.js";
 import { Aggregate } from "../schemas/aggregate.schema.js";
 import { AlertEvent } from "../schemas/event.schema.js";
@@ -31,8 +32,23 @@ export class ApiService {
     return this.sites.find().lean();
   }
 
-  listDevices(siteId?: string) {
-    return this.devices.find(siteId ? { siteId } : {}).lean();
+  async listDevices(siteId?: string) {
+    const list = await this.devices.find(siteId ? { siteId } : {}).lean();
+    return list.map((d) => ({ ...d, ...deviceStatus(d as any) }));
+  }
+
+  async getDevice(devId: string) {
+    const dev = await this.devices.findOne({ devId }).lean();
+    if (!dev) return null;
+    const latest = await this.telemetry.findOne({ "meta.devId": devId }).sort({ ts: -1 }).lean();
+    const prediction = await this.predictions.findOne({ devId }).sort({ ts: -1 }).lean();
+    return { ...dev, ...deviceStatus(dev as any), latest, prediction };
+  }
+
+  async patchDevice(devId: string, body: Record<string, unknown>) {
+    const { devId: _ignore, _id, ...rest } = body as any;
+    const dev = await this.devices.findOneAndUpdate({ devId }, { $set: rest }, { new: true }).lean();
+    return dev ? { ...dev, ...deviceStatus(dev as any) } : null;
   }
 
   upsertSite(body: Record<string, unknown>) {

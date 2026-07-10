@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { ApiService, type RangeQuery } from "./api.service.js";
 import { JwtAuthGuard } from "../auth/jwt.guard.js";
 import { AlertsService } from "../alerts/alerts.service.js";
@@ -33,6 +33,17 @@ export class ApiController {
   @Get("devices")
   devices(@Query("siteId") siteId?: string) {
     return this.api.listDevices(siteId);
+  }
+
+  @Get("devices/:devId")
+  getDevice(@Param("devId") devId: string) {
+    return this.api.getDevice(devId);
+  }
+
+  @Patch("devices/:devId")
+  @UseGuards(JwtAuthGuard)
+  patchDevice(@Param("devId") devId: string, @Body() body: Record<string, unknown>) {
+    return this.api.patchDevice(devId, body);
   }
 
   @Post("devices")

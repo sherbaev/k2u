@@ -54,7 +54,10 @@ export class SeedService {
         devId: spec.devId, siteId: spec.siteId, name: spec.name,
         deviceType: spec.deviceType, ratedPower: spec.ratedPower,
         serviceAge: spec.serviceAge, location: spec.location,
-        phaseConfig: "4-wire-380/220", lastSeen: new Date(now),
+        phaseConfig: "4-wire-380/220",
+        firstSeen: new Date(now - days * 86400000), lastSeen: new Date(now),
+        telemetryPeriodSec: 3600, simulated: true,
+        energyKwh: Math.round(spec.ratedPower * 24 * days * (spec.deviceType === "pv_inverter" ? 0.18 : 0.55)),
       });
 
       const agg = generateSeries(spec, days, now);

@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link as RouterLink } from "react-router-dom";
 import {
   Box,
   Grid,
   Card,
+  CardActionArea,
   CardContent,
+  CardActions,
   Typography,
   Stack,
   Button,
@@ -11,12 +14,11 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField,
-  MenuItem,
   Alert,
   Divider,
   IconButton,
   Tooltip,
+  Chip,
 } from "@mui/material";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
@@ -34,11 +36,18 @@ import {
   Building2,
   Eye,
   EyeOff,
+  Pencil,
+  Trash2,
+  Download,
 } from "lucide-react";
 import { api } from "../lib/api.js";
 import { useLive } from "../lib/useLive.js";
 import { useShowCoords, setShowCoords } from "../lib/prefs.js";
+import { formatAge } from "../lib/format.js";
+import { downloadFirmwareZip } from "../lib/firmwareGen.js";
 import StatusBadge from "../components/StatusBadge.jsx";
+import DeviceLifecycleChip from "../components/DeviceLifecycleChip.jsx";
+import DeviceDialog from "../components/DeviceDialog.jsx";
 import PageHeader from "../components/PageHeader.jsx";
 import EmptyState from "../components/EmptyState.jsx";
 
@@ -115,20 +124,6 @@ function DeviceTypeIcon({ deviceType, size = 18 }) {
   );
 }
 
-function emptyForm() {
-  return {
-    name: "",
-    devId: "",
-    siteId: "",
-    deviceType: "pv_inverter",
-    ratedPower: "",
-    serviceAge: "",
-    lat: "",
-    lon: "",
-    address: "",
-  };
-}
-
 export default function Devices() {
   const { latest } = useLive();
   const showCoords = useShowCoords();
@@ -138,9 +133,11 @@ export default function Devices() {
   const [error, setError] = useState("");
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState(emptyForm());
-  const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState("");
+  const [dialogMode, setDialogMode] = useState("create");
+  const [dialogDevice, setDialogDevice] = useState(null);
+
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const [demoLoading, setDemoLoading] = useState(false);
   const [notice, setNotice] = useState(null);
@@ -177,51 +174,44 @@ export default function Devices() {
     [devices],
   );
 
-  function handleField(field) {
-    return (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
+  function openCreateDialog() {
+    setDialogMode("create");
+    setDialogDevice(null);
+    setDialogOpen(true);
   }
 
-  async function handleCreateDevice() {
-    setFormError("");
-    if (!form.name.trim() || !form.devId.trim() || !form.siteId.trim()) {
-      setFormError("Name, device ID and site ID are required.");
-      return;
-    }
-    const lat = form.lat === "" ? undefined : Number(form.lat);
-    const lon = form.lon === "" ? undefined : Number(form.lon);
-    if (form.lat !== "" && !Number.isFinite(lat)) {
-      setFormError("Latitude must be a number.");
-      return;
-    }
-    if (form.lon !== "" && !Number.isFinite(lon)) {
-      setFormError("Longitude must be a number.");
-      return;
-    }
+  function openEditDialog(device) {
+    setDialogMode("edit");
+    setDialogDevice(device);
+    setDialogOpen(true);
+  }
 
-    const body = {
-      devId: form.devId.trim(),
-      siteId: form.siteId.trim(),
-      name: form.name.trim(),
-      deviceType: form.deviceType,
-      ratedPower: form.ratedPower === "" ? undefined : Number(form.ratedPower),
-      serviceAge: form.serviceAge === "" ? undefined : Number(form.serviceAge),
-      location:
-        lat !== undefined || lon !== undefined || form.address
-          ? { lat, lon, address: form.address || undefined }
-          : undefined,
-    };
-
-    setSubmitting(true);
+  async function handleDownloadFirmware(device) {
     try {
-      await api.createDevice(body);
-      setDialogOpen(false);
-      setForm(emptyForm());
-      setNotice({ severity: "success", message: `Device "${body.name}" created.` });
+      await downloadFirmwareZip(device);
+    } catch (err) {
+      setNotice({ severity: "error", message: err.message || "Could not build firmware archive." });
+    }
+  }
+
+  async function handleDeleteConfirm() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await api.deleteDevice(deleteTarget.devId);
+      setNotice({
+        severity: "success",
+        message: `Device "${deleteTarget.name || deleteTarget.devId}" deleted.`,
+      });
+      setDeleteTarget(null);
       await refresh();
     } catch (err) {
-      setFormError(err?.response?.data?.message || err.message || "Could not create device.");
+      setNotice({
+        severity: "error",
+        message: err?.response?.data?.message || err.message || "Could not delete device.",
+      });
     } finally {
-      setSubmitting(false);
+      setDeleting(false);
     }
   }
 
@@ -291,14 +281,7 @@ export default function Devices() {
             >
               {demoLoading ? "Loading…" : "Load demo devices"}
             </Button>
-            <Button
-              variant="contained"
-              startIcon={<Plus size={16} />}
-              onClick={() => {
-                setFormError("");
-                setDialogOpen(true);
-              }}
-            >
+            <Button variant="contained" startIcon={<Plus size={16} />} onClick={openCreateDialog}>
               Add device
             </Button>
           </Stack>
@@ -409,80 +392,126 @@ export default function Devices() {
             const site = siteById[d.siteId];
             return (
               <Grid item xs={12} sm={6} lg={4} key={d.devId}>
-                <Card sx={{ height: "100%" }}>
-                  <CardContent>
-                    <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-                      <Stack direction="row" spacing={1.25} alignItems="center">
-                        <Box
-                          sx={{
-                            width: 36,
-                            height: 36,
-                            borderRadius: "10px",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            bgcolor: "rgba(21,94,156,0.10)",
-                            color: "primary.main",
-                          }}
-                        >
-                          <DeviceTypeIcon deviceType={d.deviceType} />
-                        </Box>
-                        <Box>
-                          <Typography variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
-                            {d.name || d.devId}
+                <Card sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
+                  <CardActionArea
+                    component={RouterLink}
+                    to={`/devices/${encodeURIComponent(d.devId)}`}
+                    sx={{ flexGrow: 1, alignItems: "stretch", justifyContent: "flex-start", display: "block" }}
+                  >
+                    <CardContent>
+                      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
+                        <Stack direction="row" spacing={1.25} alignItems="center" sx={{ minWidth: 0 }}>
+                          <Box
+                            sx={{
+                              width: 36,
+                              height: 36,
+                              borderRadius: "10px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              bgcolor: "rgba(21,94,156,0.10)",
+                              color: "primary.main",
+                              flexShrink: 0,
+                            }}
+                          >
+                            <DeviceTypeIcon deviceType={d.deviceType} />
+                          </Box>
+                          <Box sx={{ minWidth: 0 }}>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.2 }} noWrap>
+                              {d.name || d.devId}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {DEVICE_TYPE_LABEL[d.deviceType] || d.deviceType || "Device"}
+                            </Typography>
+                          </Box>
+                        </Stack>
+                        <DeviceLifecycleChip status={d.status} size="small" />
+                      </Stack>
+
+                      {d.simulated && (
+                        <Tooltip title="driven by the hourly simulator">
+                          <Chip
+                            size="small"
+                            variant="outlined"
+                            icon={<Sparkles size={12} />}
+                            label="Simulated"
+                            sx={{ mt: 1 }}
+                          />
+                        </Tooltip>
+                      )}
+                      {(d.status === "receiving" || d.status === "offline") && (
+                        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
+                          last seen {formatAge(d.lastSeenAgeSec)}
+                        </Typography>
+                      )}
+
+                      <Divider sx={{ my: 1.5 }} />
+
+                      <Stack spacing={0.75}>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <Hash size={14} color="#8a94a6" />
+                          <Typography variant="body2" color="text.secondary">
+                            {d.devId}
+                          </Typography>
+                        </Stack>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <Building2 size={14} color="#8a94a6" />
+                          <Typography variant="body2" color="text.secondary">
+                            {site?.name || d.siteId}
+                          </Typography>
+                        </Stack>
+                        {Number.isFinite(d?.location?.lat) && Number.isFinite(d?.location?.lon) && (
+                          <Stack direction="row" spacing={1} alignItems="center">
+                            {showCoords ? <MapPin size={14} color="#8a94a6" /> : <MapPinOff size={14} color="#8a94a6" />}
+                            <Typography variant="body2" color="text.secondary">
+                              {showCoords ? `${d.location.lat.toFixed(4)}, ${d.location.lon.toFixed(4)}` : "coordinates hidden"}
+                            </Typography>
+                          </Stack>
+                        )}
+                        {Number.isFinite(d.ratedPower) && (
+                          <Stack direction="row" spacing={1} alignItems="center">
+                            <Gauge size={14} color="#8a94a6" />
+                            <Typography variant="body2" color="text.secondary">
+                              {d.ratedPower} kW rated
+                            </Typography>
+                          </Stack>
+                        )}
+                      </Stack>
+
+                      <Divider sx={{ my: 1.5 }} />
+
+                      <Stack direction="row" justifyContent="space-between" alignItems="center">
+                        <Stack direction="row" alignItems="baseline" spacing={1}>
+                          <Typography variant="h4" sx={{ fontWeight: 700 }}>
+                            {Number.isFinite(t?.k2u) ? `${t.k2u.toFixed(2)}%` : "—"}
                           </Typography>
                           <Typography variant="caption" color="text.secondary">
-                            {DEVICE_TYPE_LABEL[d.deviceType] || d.deviceType || "Device"}
-                          </Typography>
-                        </Box>
-                      </Stack>
-                      <StatusBadge status={t?.status} />
-                    </Stack>
-
-                    <Divider sx={{ my: 1.5 }} />
-
-                    <Stack spacing={0.75}>
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <Hash size={14} color="#8a94a6" />
-                        <Typography variant="body2" color="text.secondary">
-                          {d.devId}
-                        </Typography>
-                      </Stack>
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <Building2 size={14} color="#8a94a6" />
-                        <Typography variant="body2" color="text.secondary">
-                          {site?.name || d.siteId}
-                        </Typography>
-                      </Stack>
-                      {Number.isFinite(d?.location?.lat) && Number.isFinite(d?.location?.lon) && (
-                        <Stack direction="row" spacing={1} alignItems="center">
-                          {showCoords ? <MapPin size={14} color="#8a94a6" /> : <MapPinOff size={14} color="#8a94a6" />}
-                          <Typography variant="body2" color="text.secondary">
-                            {showCoords ? `${d.location.lat.toFixed(4)}, ${d.location.lon.toFixed(4)}` : "coordinates hidden"}
+                            latest K₂U
                           </Typography>
                         </Stack>
-                      )}
-                      {Number.isFinite(d.ratedPower) && (
-                        <Stack direction="row" spacing={1} alignItems="center">
-                          <Gauge size={14} color="#8a94a6" />
-                          <Typography variant="body2" color="text.secondary">
-                            {d.ratedPower} kW rated
-                          </Typography>
-                        </Stack>
-                      )}
-                    </Stack>
+                        <StatusBadge status={t?.status} />
+                      </Stack>
+                    </CardContent>
+                  </CardActionArea>
 
-                    <Divider sx={{ my: 1.5 }} />
-
-                    <Stack direction="row" alignItems="baseline" spacing={1}>
-                      <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                        {Number.isFinite(t?.k2u) ? `${t.k2u.toFixed(2)}%` : "—"}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        latest K₂U
-                      </Typography>
-                    </Stack>
-                  </CardContent>
+                  <Divider />
+                  <CardActions sx={{ px: 1.5, py: 0.5, justifyContent: "flex-end" }}>
+                    <Tooltip title="Download firmware">
+                      <IconButton size="small" onClick={() => handleDownloadFirmware(d)}>
+                        <Download size={16} />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Edit device">
+                      <IconButton size="small" onClick={() => openEditDialog(d)}>
+                        <Pencil size={16} />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Delete device">
+                      <IconButton size="small" color="error" onClick={() => setDeleteTarget(d)}>
+                        <Trash2 size={16} />
+                      </IconButton>
+                    </Tooltip>
+                  </CardActions>
                 </Card>
               </Grid>
             );
@@ -490,56 +519,37 @@ export default function Devices() {
         </Grid>
       )}
 
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Add device</DialogTitle>
+      <DeviceDialog
+        open={dialogOpen}
+        mode={dialogMode}
+        device={dialogDevice}
+        onClose={() => setDialogOpen(false)}
+        onSaved={(updated, mode) => {
+          if (mode === "edit") {
+            setDevices((prev) => prev.map((d) => (d.devId === updated.devId ? { ...d, ...updated } : d)));
+            setNotice({ severity: "success", message: "Device updated." });
+          } else {
+            setNotice({ severity: "success", message: `Device "${updated?.name || updated?.devId}" created.` });
+            refresh();
+          }
+        }}
+      />
+
+      <Dialog open={Boolean(deleteTarget)} onClose={() => !deleting && setDeleteTarget(null)}>
+        <DialogTitle>Delete this device?</DialogTitle>
         <DialogContent>
-          <Stack spacing={2} sx={{ mt: 0.5 }}>
-            {formError && <Alert severity="error">{formError}</Alert>}
-            <TextField label="Device name" fullWidth value={form.name} onChange={handleField("name")} />
-            <Stack direction="row" spacing={2}>
-              <TextField label="Device ID" fullWidth value={form.devId} onChange={handleField("devId")} />
-              <TextField label="Site ID" fullWidth value={form.siteId} onChange={handleField("siteId")} />
-            </Stack>
-            <TextField
-              label="Device type"
-              select
-              fullWidth
-              value={form.deviceType}
-              onChange={handleField("deviceType")}
-            >
-              <MenuItem value="pv_inverter">PV inverter</MenuItem>
-              <MenuItem value="telecom_rect">Telecom rectifier</MenuItem>
-            </TextField>
-            <Stack direction="row" spacing={2}>
-              <TextField
-                label="Rated power (kW)"
-                fullWidth
-                value={form.ratedPower}
-                onChange={handleField("ratedPower")}
-              />
-              <TextField
-                label="Service age (years)"
-                fullWidth
-                value={form.serviceAge}
-                onChange={handleField("serviceAge")}
-              />
-            </Stack>
-            <Stack direction="row" spacing={2}>
-              <TextField label="Latitude" fullWidth value={form.lat} onChange={handleField("lat")} />
-              <TextField label="Longitude" fullWidth value={form.lon} onChange={handleField("lon")} />
-            </Stack>
-            <TextField
-              label="Address / site description (optional)"
-              fullWidth
-              value={form.address}
-              onChange={handleField("address")}
-            />
-          </Stack>
+          <Typography variant="body2" color="text.secondary">
+            This will permanently remove{" "}
+            <strong>{deleteTarget?.name || deleteTarget?.devId}</strong> ({deleteTarget?.devId}) and stop
+            it from appearing on the dashboard. This action cannot be undone.
+          </Typography>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5 }}>
-          <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleCreateDevice} disabled={submitting}>
-            {submitting ? "Creating…" : "Create device"}
+          <Button onClick={() => setDeleteTarget(null)} disabled={deleting}>
+            Cancel
+          </Button>
+          <Button color="error" variant="contained" onClick={handleDeleteConfirm} disabled={deleting}>
+            {deleting ? "Deleting…" : "Delete device"}
           </Button>
         </DialogActions>
       </Dialog>
