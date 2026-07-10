@@ -15,6 +15,8 @@ import {
   MenuItem,
   Alert,
   Divider,
+  IconButton,
+  Tooltip,
 } from "@mui/material";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
@@ -24,14 +26,18 @@ import {
   Plus,
   Sparkles,
   MapPin,
+  MapPinOff,
   Sun,
   Antenna,
   Gauge,
   Hash,
   Building2,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { api } from "../lib/api.js";
 import { useLive } from "../lib/useLive.js";
+import { useShowCoords, setShowCoords } from "../lib/prefs.js";
 import StatusBadge from "../components/StatusBadge.jsx";
 import PageHeader from "../components/PageHeader.jsx";
 import EmptyState from "../components/EmptyState.jsx";
@@ -125,6 +131,7 @@ function emptyForm() {
 
 export default function Devices() {
   const { latest } = useLive();
+  const showCoords = useShowCoords();
   const [devices, setDevices] = useState([]);
   const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -265,7 +272,17 @@ export default function Devices() {
         title="Devices"
         subtitle="ESP32 monitoring units deployed across sites, with live K₂U status and location."
         actions={
-          <Stack direction="row" spacing={1.5}>
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <Tooltip title={showCoords ? "Hide coordinates" : "Show coordinates"}>
+              <IconButton
+                onClick={() => setShowCoords(!showCoords)}
+                size="small"
+                aria-label="Toggle coordinate visibility"
+                sx={{ border: "1px solid", borderColor: "divider", borderRadius: "8px" }}
+              >
+                {showCoords ? <Eye size={17} /> : <EyeOff size={17} />}
+              </IconButton>
+            </Tooltip>
             <Button
               variant="outlined"
               startIcon={<Sparkles size={16} />}
@@ -305,47 +322,66 @@ export default function Devices() {
             Site map
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-            {devicesWithCoords.length} of {devices.length} device
-            {devices.length === 1 ? "" : "s"} plotted (devices without coordinates are hidden).
+            {showCoords
+              ? `${devicesWithCoords.length} of ${devices.length} device${devices.length === 1 ? "" : "s"} plotted (devices without coordinates are hidden).`
+              : "Coordinates are hidden — toggle the eye icon above to show the map."}
           </Typography>
         </Box>
-        <Box sx={{ height: 380 }}>
-          <MapContainer
-            center={UZBEKISTAN_CENTER}
-            zoom={DEFAULT_ZOOM}
-            style={{ height: "100%", width: "100%" }}
-            scrollWheelZoom={false}
+        {showCoords ? (
+          <Box sx={{ height: 380 }}>
+            <MapContainer
+              center={UZBEKISTAN_CENTER}
+              zoom={DEFAULT_ZOOM}
+              style={{ height: "100%", width: "100%" }}
+              scrollWheelZoom={false}
+            >
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              {devicesWithCoords.map((d) => {
+                const t = latest[d.devId];
+                return (
+                  <Marker
+                    key={d.devId}
+                    position={[d.location.lat, d.location.lon]}
+                    icon={statusIcon(t?.status)}
+                  >
+                    <Popup>
+                      <Stack spacing={0.25}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                          {d.name || d.devId}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {d.devId} · {siteById[d.siteId]?.name || d.siteId}
+                        </Typography>
+                        <Typography variant="body2" sx={{ mt: 0.5 }}>
+                          K₂U: {Number.isFinite(t?.k2u) ? `${t.k2u.toFixed(2)}%` : "—"}
+                        </Typography>
+                      </Stack>
+                    </Popup>
+                  </Marker>
+                );
+              })}
+            </MapContainer>
+          </Box>
+        ) : (
+          <Box
+            sx={{
+              height: 380,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 1,
+              color: "text.secondary",
+              bgcolor: (t) => (t.palette.mode === "dark" ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)"),
+            }}
           >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            {devicesWithCoords.map((d) => {
-              const t = latest[d.devId];
-              return (
-                <Marker
-                  key={d.devId}
-                  position={[d.location.lat, d.location.lon]}
-                  icon={statusIcon(t?.status)}
-                >
-                  <Popup>
-                    <Stack spacing={0.25}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                        {d.name || d.devId}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {d.devId} · {siteById[d.siteId]?.name || d.siteId}
-                      </Typography>
-                      <Typography variant="body2" sx={{ mt: 0.5 }}>
-                        K₂U: {Number.isFinite(t?.k2u) ? `${t.k2u.toFixed(2)}%` : "—"}
-                      </Typography>
-                    </Stack>
-                  </Popup>
-                </Marker>
-              );
-            })}
-          </MapContainer>
-        </Box>
+            <MapPinOff size={28} />
+            <Typography variant="body2">Device locations are hidden for privacy.</Typography>
+          </Box>
+        )}
       </Card>
 
       {loading ? (
@@ -420,9 +456,9 @@ export default function Devices() {
                       </Stack>
                       {Number.isFinite(d?.location?.lat) && Number.isFinite(d?.location?.lon) && (
                         <Stack direction="row" spacing={1} alignItems="center">
-                          <MapPin size={14} color="#8a94a6" />
+                          {showCoords ? <MapPin size={14} color="#8a94a6" /> : <MapPinOff size={14} color="#8a94a6" />}
                           <Typography variant="body2" color="text.secondary">
-                            {d.location.lat.toFixed(4)}, {d.location.lon.toFixed(4)}
+                            {showCoords ? `${d.location.lat.toFixed(4)}, ${d.location.lon.toFixed(4)}` : "coordinates hidden"}
                           </Typography>
                         </Stack>
                       )}

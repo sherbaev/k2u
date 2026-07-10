@@ -26,22 +26,28 @@ import {
   PenLine,
   FileText,
   FlaskConical,
+  Cpu,
   Wifi,
   WifiOff,
   LogOut,
+  LogIn,
   ChevronDown,
   Sun,
   Moon,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import Dashboard from "./pages/Dashboard.jsx";
 import Devices from "./pages/Devices.jsx";
 import ManualEntry from "./pages/ManualEntry.jsx";
 import Reports from "./pages/Reports.jsx";
 import Research from "./pages/Research.jsx";
+import Setup from "./pages/Setup.jsx";
 import Login from "./pages/Login.jsx";
 import { isAuthed, signOut, currentUser } from "./lib/auth.js";
 import { useLive } from "./lib/useLive.js";
 import { useThemeMode } from "./lib/ThemeModeContext.jsx";
+import { useShowCoords, setShowCoords } from "./lib/prefs.js";
 
 const DRAWER_WIDTH = 232;
 
@@ -51,6 +57,7 @@ const NAV_ITEMS = [
   { to: "/manual", label: "Manual entry", icon: PenLine },
   { to: "/reports", label: "Reports", icon: FileText },
   { to: "/research", label: "Research", icon: FlaskConical },
+  { to: "/setup", label: "Setup", icon: Cpu },
 ];
 
 function NavList({ onNavigate }) {
@@ -97,13 +104,14 @@ function AppShell({ children }) {
   const { connected } = useLive();
   const navigate = useNavigate();
   const [userMenuAnchor, setUserMenuAnchor] = useState(null);
+  const authed = isAuthed();
   const user = currentUser();
   const { mode, toggle } = useThemeMode();
+  const showCoords = useShowCoords();
 
   function handleSignOut() {
     setUserMenuAnchor(null);
     signOut();
-    navigate("/login", { replace: true });
   }
 
   return (
@@ -167,6 +175,19 @@ function AppShell({ children }) {
               sx={{ display: { xs: "none", sm: "inline-flex" } }}
             />
             <IconButton
+              onClick={() => setShowCoords(!showCoords)}
+              size="small"
+              aria-label="Toggle coordinate visibility"
+              title={showCoords ? "Hide coordinates" : "Show coordinates"}
+              sx={{
+                border: "1px solid",
+                borderColor: "divider",
+                borderRadius: "8px",
+              }}
+            >
+              {showCoords ? <Eye size={17} /> : <EyeOff size={17} />}
+            </IconButton>
+            <IconButton
               onClick={toggle}
               size="small"
               aria-label="Toggle color mode"
@@ -179,41 +200,54 @@ function AppShell({ children }) {
             >
               {mode === "dark" ? <Sun size={17} /> : <Moon size={17} />}
             </IconButton>
-            <IconButton onClick={(e) => setUserMenuAnchor(e.currentTarget)} size="small">
-              <Stack direction="row" spacing={1} alignItems="center">
-                <Avatar sx={{ width: 30, height: 30, fontSize: "0.85rem", bgcolor: "primary.main" }}>
-                  {user.slice(0, 1).toUpperCase()}
-                </Avatar>
-                <ChevronDown size={16} />
-              </Stack>
-            </IconButton>
-            <Menu
-              anchorEl={userMenuAnchor}
-              open={Boolean(userMenuAnchor)}
-              onClose={() => setUserMenuAnchor(null)}
-              anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-              transformOrigin={{ vertical: "top", horizontal: "right" }}
-            >
-              <MenuItem disabled sx={{ opacity: "1 !important" }}>
-                <ListItemAvatar>
-                  <Avatar sx={{ width: 28, height: 28, bgcolor: "primary.main", fontSize: "0.8rem" }}>
-                    {user.slice(0, 1).toUpperCase()}
-                  </Avatar>
-                </ListItemAvatar>
-                <ListItemText
-                  primary={user}
-                  secondary="Beta account"
-                  primaryTypographyProps={{ fontWeight: 600 }}
-                />
-              </MenuItem>
-              <Divider />
-              <MenuItem onClick={handleSignOut}>
-                <ListItemIcon>
-                  <LogOut size={16} />
-                </ListItemIcon>
-                Sign out
-              </MenuItem>
-            </Menu>
+            {authed ? (
+              <>
+                <IconButton onClick={(e) => setUserMenuAnchor(e.currentTarget)} size="small">
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Avatar sx={{ width: 30, height: 30, fontSize: "0.85rem", bgcolor: "primary.main" }}>
+                      {user.slice(0, 1).toUpperCase()}
+                    </Avatar>
+                    <ChevronDown size={16} />
+                  </Stack>
+                </IconButton>
+                <Menu
+                  anchorEl={userMenuAnchor}
+                  open={Boolean(userMenuAnchor)}
+                  onClose={() => setUserMenuAnchor(null)}
+                  anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                  transformOrigin={{ vertical: "top", horizontal: "right" }}
+                >
+                  <MenuItem disabled sx={{ opacity: "1 !important" }}>
+                    <ListItemAvatar>
+                      <Avatar sx={{ width: 28, height: 28, bgcolor: "primary.main", fontSize: "0.8rem" }}>
+                        {user.slice(0, 1).toUpperCase()}
+                      </Avatar>
+                    </ListItemAvatar>
+                    <ListItemText
+                      primary={user}
+                      secondary="Beta account"
+                      primaryTypographyProps={{ fontWeight: 600 }}
+                    />
+                  </MenuItem>
+                  <Divider />
+                  <MenuItem onClick={handleSignOut}>
+                    <ListItemIcon>
+                      <LogOut size={16} />
+                    </ListItemIcon>
+                    Sign out
+                  </MenuItem>
+                </Menu>
+              </>
+            ) : (
+              <Chip
+                size="small"
+                variant="outlined"
+                clickable
+                icon={<LogIn size={14} />}
+                label="Sign in"
+                onClick={() => navigate("/login")}
+              />
+            )}
           </Toolbar>
         </AppBar>
 
@@ -223,12 +257,11 @@ function AppShell({ children }) {
   );
 }
 
-/** Redirect to /login unless the cosmetic auth flag is set. */
-function RequireAuth({ children }) {
-  if (!isAuthed()) return <Navigate to="/login" replace />;
-  return children;
-}
-
+/**
+ * The app is publicly viewable — no auth gate. `/login` is an optional,
+ * purely cosmetic sign-in affordance (see lib/auth.js) that only changes the
+ * user chip in the toolbar; it never blocks access to any page or data.
+ */
 export default function App() {
   return (
     <Routes>
@@ -236,18 +269,17 @@ export default function App() {
       <Route
         path="/*"
         element={
-          <RequireAuth>
-            <AppShell>
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/devices" element={<Devices />} />
-                <Route path="/manual" element={<ManualEntry />} />
-                <Route path="/reports" element={<Reports />} />
-                <Route path="/research" element={<Research />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </AppShell>
-          </RequireAuth>
+          <AppShell>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/devices" element={<Devices />} />
+              <Route path="/manual" element={<ManualEntry />} />
+              <Route path="/reports" element={<Reports />} />
+              <Route path="/research" element={<Research />} />
+              <Route path="/setup" element={<Setup />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </AppShell>
         }
       />
     </Routes>

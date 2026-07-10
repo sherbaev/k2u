@@ -54,11 +54,16 @@ function betaMethod(uab, ubc, uca) {
  * the parent via onPointChange so the nomogram can track it.
  *
  * Props:
- *   telemetry     : latest live-device telemetry (optional) — auto-fills the
- *                    inputs until the user edits them manually.
- *   onPointChange : ({x,y}) => void, called whenever the ratios change.
+ *   telemetry           : latest live-device telemetry (optional) — auto-fills
+ *                          the inputs until the user edits them manually.
+ *   onPointChange       : ({x,y}) => void, called whenever the ratios change.
+ *   externalLineVoltages: { uab, ubc, uca } (optional) — when this object
+ *                          changes identity, the analyzer switches into
+ *                          line-voltage mode with these values and recomputes.
+ *                          Used to sync from an external drag (e.g. the
+ *                          nomogram's draggable operating point).
  */
-export default function K2uAnalyzer({ telemetry, onPointChange }) {
+export default function K2uAnalyzer({ telemetry, onPointChange, externalLineVoltages }) {
   const theme = useTheme();
   const [voltMode, setVoltMode] = useState("phase"); // "phase" | "line"
   const [phase, setPhase] = useState(DEFAULT_PHASE);
@@ -98,6 +103,18 @@ export default function K2uAnalyzer({ telemetry, onPointChange }) {
     if (onPointChange) onPointChange(point);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [point?.x, point?.y]);
+
+  // Sync from an external drag source (the nomogram's operating point).
+  // Only reacts when a new object arrives, so it never loops back on itself.
+  useEffect(() => {
+    if (!externalLineVoltages) return;
+    const { uab, ubc, uca } = externalLineVoltages;
+    if (![uab, ubc, uca].every(Number.isFinite)) return;
+    setTouched(true);
+    setVoltMode("line");
+    setLine({ uab, ubc, uca });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [externalLineVoltages]);
 
   function handleVoltModeChange(_e, next) {
     if (!next) return;

@@ -28,6 +28,16 @@ export default function Dashboard() {
   const [devices, setDevices] = useState([]);
   const [sites, setSites] = useState([]);
   const [analyzerPoint, setAnalyzerPoint] = useState(null);
+  const [dragVoltages, setDragVoltages] = useState(null);
+
+  // Dragging the nomogram's operating point: convert data ratios (x=U_BC/U_AB,
+  // y=U_CA/U_AB) to line voltages on a fixed 380 V base and push them into the
+  // K2uAnalyzer, which recomputes K₂U/φ₂ and reports the (identical) ratios
+  // back via onPointChange — a one-way flow, so no update loop.
+  function handleNomogramDrag(x, y) {
+    const uab = 380;
+    setDragVoltages({ uab, ubc: uab * x, uca: uab * y });
+  }
 
   // Auto-select the first device that appears.
   useEffect(() => {
@@ -160,9 +170,9 @@ export default function Dashboard() {
         </Grid>
       </Grid>
 
-      {/* Centerpiece row: compact nomogram + interactive analyzer */}
+      {/* Centerpiece row: prominent draggable nomogram + interactive analyzer */}
       <Grid container spacing={2} sx={{ mt: 0.25 }}>
-        <Grid item xs={12} lg={5}>
+        <Grid item xs={12} lg={6}>
           <Card sx={{ height: "100%" }}>
             <CardContent>
               <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
@@ -173,18 +183,18 @@ export default function Dashboard() {
                   {devId || "no device"}
                 </Typography>
               </Stack>
-              <Box sx={{ maxWidth: 440, mx: "auto" }}>
-                <Nomogram point={analyzerPoint} trail={trail} />
+              <Box sx={{ width: "100%", maxWidth: 560, mx: "auto" }}>
+                <Nomogram point={analyzerPoint} trail={trail} onPoint={handleNomogramDrag} />
               </Box>
               <Typography variant="caption" color="text.secondary" sx={{ display: "block", textAlign: "center", mt: 0.5 }}>
-                Iso-K₂U contours (2–14%) with GOST 2%/4% zones; dot follows the analyzer, faint trail is device history.
+                Drag the operating point to explore K₂U — iso-K₂U contours (2–14%) with GOST 2%/4% zones; faint trail is device history.
               </Typography>
             </CardContent>
           </Card>
         </Grid>
 
-        <Grid item xs={12} lg={7}>
-          <K2uAnalyzer telemetry={telemetry} onPointChange={setAnalyzerPoint} />
+        <Grid item xs={12} lg={6}>
+          <K2uAnalyzer telemetry={telemetry} onPointChange={setAnalyzerPoint} externalLineVoltages={dragVoltages} />
         </Grid>
       </Grid>
 
