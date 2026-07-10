@@ -178,9 +178,9 @@ export default function Dashboard() {
         </Grid>
       </Grid>
 
-      {/* Centerpiece: stacked (top/bottom) so both are large & readable */}
-      <Grid container spacing={2} sx={{ mt: 0.25 }}>
-        <Grid item xs={12}>
+      {/* Centerpiece: nomogram (left) + K₂U analyzer (right) in one block */}
+      <Grid container spacing={2} sx={{ mt: 0.25 }} alignItems="stretch">
+        <Grid item xs={12} md={7}>
           <CapturePanel filename="k2u-nomogram">
             <Card sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
               <CardContent sx={{ display: "flex", flexDirection: "column", flexGrow: 1 }}>
@@ -205,7 +205,7 @@ export default function Dashboard() {
                   <Box
                     sx={{
                       width: "100%",
-                      maxWidth: { xs: 360, sm: 520, md: 600, lg: 640 },
+                      maxWidth: { xs: 360, sm: 520, md: 560 },
                       aspectRatio: "1 / 1",
                       mx: "auto",
                     }}
@@ -222,7 +222,7 @@ export default function Dashboard() {
           </CapturePanel>
         </Grid>
 
-        <Grid item xs={12}>
+        <Grid item xs={12} md={5}>
           <CapturePanel filename="k2u-analyzer">
             <K2uAnalyzer telemetry={telemetry} onPointChange={setAnalyzerPoint} externalLineVoltages={dragVoltages} />
           </CapturePanel>

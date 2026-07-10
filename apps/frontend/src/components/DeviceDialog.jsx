@@ -14,10 +14,15 @@ import {
   Typography,
   Collapse,
   Link,
+  Box,
+  IconButton,
+  Tooltip,
+  InputAdornment,
 } from "@mui/material";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, CheckCircle2, Copy, Check, Download, ExternalLink } from "lucide-react";
 import { api } from "../lib/api.js";
 import { toDateInputValue, fromDateInputValue } from "../lib/format.js";
+import { downloadFirmwareZip } from "../lib/firmwareGen.js";
 
 const PERIOD_OPTIONS = [
   { value: 10, label: "10 seconds" },
@@ -81,15 +86,33 @@ export default function DeviceDialog({ open, mode = "create", device, onClose, o
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [created, setCreated] = useState(null); // set after a successful create
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (open) {
       setForm(isEdit ? formFromDevice(device) : emptyForm());
       setError("");
       setShowAdvanced(false);
+      setCreated(null);
+      setCopied(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, device, isEdit]);
+
+  const deviceUrl = created
+    ? `${window.location.origin}/devices/${encodeURIComponent(created.devId)}`
+    : "";
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(deviceUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      /* clipboard unavailable — user can select the field manually */
+    }
+  }
 
   function field(key) {
     return (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
@@ -148,11 +171,12 @@ export default function DeviceDialog({ open, mode = "create", device, onClose, o
         onSaved && onSaved(updated || { ...device, ...body }, "edit");
         onClose && onClose();
       } else {
-        const created = await api.createDevice(body);
+        const createdDev = await api.createDevice(body);
         setSubmitting(false);
-        onSaved && onSaved(created || body, "create");
-        onClose && onClose();
-        navigate(`/devices/${encodeURIComponent(body.devId)}`);
+        onSaved && onSaved(createdDev || body, "create");
+        // Show the success step (unique link + matching firmware) instead of
+        // navigating away immediately.
+        setCreated(createdDev || body);
       }
     } catch (err) {
       setSubmitting(false);
@@ -164,7 +188,70 @@ export default function DeviceDialog({ open, mode = "create", device, onClose, o
 
   return (
     <Dialog open={open} onClose={submitting ? undefined : onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>{isEdit ? "Edit device" : "Add device"}</DialogTitle>
+      <DialogTitle>{created ? "Device created" : isEdit ? "Edit device" : "Add device"}</DialogTitle>
+      {created ? (
+        <>
+          <DialogContent>
+            <Stack spacing={2} sx={{ mt: 0.5 }} alignItems="stretch">
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ color: "success.main" }}>
+                <CheckCircle2 size={22} />
+                <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                  {created.name || created.devId} is registered
+                </Typography>
+              </Stack>
+              <Typography variant="body2" color="text.secondary">
+                Share this link to view the device. It shows “waiting for first data” until the
+                ESP32 sends its first reading.
+              </Typography>
+              <TextField
+                label="Device link"
+                value={deviceUrl}
+                fullWidth
+                size="small"
+                InputProps={{
+                  readOnly: true,
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <Tooltip title={copied ? "Copied!" : "Copy link"}>
+                        <IconButton edge="end" size="small" onClick={copyLink}>
+                          {copied ? <Check size={16} /> : <Copy size={16} />}
+                        </IconButton>
+                      </Tooltip>
+                    </InputAdornment>
+                  ),
+                }}
+                onFocus={(e) => e.target.select()}
+              />
+              <Alert severity="info" sx={{ py: 0.5 }}>
+                The firmware below is pre-configured for this exact device — same Device ID, Site ID,
+                MQTT topic and report interval. Flash it and the device connects automatically.
+              </Alert>
+              <Button
+                variant="outlined"
+                startIcon={<Download size={16} />}
+                onClick={() => downloadFirmwareZip(created)}
+                sx={{ alignSelf: "flex-start" }}
+              >
+                Download firmware for this device
+              </Button>
+            </Stack>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2.5 }}>
+            <Button onClick={onClose}>Close</Button>
+            <Button
+              variant="contained"
+              startIcon={<ExternalLink size={16} />}
+              onClick={() => {
+                onClose && onClose();
+                navigate(`/devices/${encodeURIComponent(created.devId)}`);
+              }}
+            >
+              Open device
+            </Button>
+          </DialogActions>
+        </>
+      ) : (
+      <>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 0.5 }}>
           {error && <Alert severity="error">{error}</Alert>}
@@ -287,6 +374,8 @@ export default function DeviceDialog({ open, mode = "create", device, onClose, o
           {submitting ? "Saving…" : isEdit ? "Save changes" : "Create device"}
         </Button>
       </DialogActions>
+      </>
+      )}
     </Dialog>
   );
 }
