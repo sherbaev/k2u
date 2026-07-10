@@ -145,3 +145,4 @@ From line-voltage magnitudes, `k2uFromVoltages()` runs the full complex
 symmetrical-components transform (K₂U + φ₂); `k2uBeta()` is the RMS-only IEC
 61000-4-30 closed form the firmware uses. Both are cross-checked in tests.
 GOST 32144-2013 limits: 2 % normal, 4 % maximum.
+# k2u
