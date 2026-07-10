@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://k2u.local/schemas/aggregate.schema.json",
+  "title": "Aggregate",
+  "description": "10-minute, RTC-aligned aggregate summary of telemetry.",
+  "type": "object",
+  "properties": {
+    "ts": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "site_id": {
+      "type": "string"
+    },
+    "dev_id": {
+      "type": "string"
+    },
+    "k2u_avg": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "k2u_min": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "k2u_max": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "k2u_p95": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "exceed_2pct_s": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "exceed_4pct_s": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "temp_mean": {
+      "type": "number"
+    },
+    "temp_max": {
+      "type": "number"
+    },
+    "load_factor": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    }
+  },
+  "required": ["ts", "site_id", "dev_id"],
+  "additionalProperties": false
+}

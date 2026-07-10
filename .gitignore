@@ -1,0 +1,23 @@
+node_modules/
+dist/
+build/
+.pio/
+.env
+.env.*
+!.env.example
+*.log
+coverage/
+.DS_Store
+# firmware secrets
+apps/firmware/include/secrets.h
+# mosquitto certs
+infra/mosquitto/certs/*.pem
+infra/mosquitto/certs/*.key
+infra/mosquitto/certs/*.crt
+# ai-service
+apps/ai-service/__pycache__/
+apps/ai-service/*.onnx
+apps/ai-service/.venv/
+apps/ai-service/data/
+apps/ai-service/artifacts/
+apps/ai-service/**/__pycache__/

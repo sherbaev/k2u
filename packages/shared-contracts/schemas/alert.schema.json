@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://k2u.local/schemas/alert.schema.json",
+  "title": "Alert",
+  "description": "Alert raised when a device crosses a WARNING or CRITICAL threshold.",
+  "type": "object",
+  "properties": {
+    "ts": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "site_id": {
+      "type": "string"
+    },
+    "dev_id": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["WARNING", "CRITICAL"]
+    },
+    "k2u": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "message": {
+      "type": "string"
+    }
+  },
+  "required": ["ts", "site_id", "dev_id", "type", "k2u"],
+  "additionalProperties": false
+}

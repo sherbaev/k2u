@@ -1,0 +1,3 @@
+# @k2u/shared-contracts
+
+This package is the canonical contract for the K₂U voltage-unbalance monitoring system: the JSON Schemas in `schemas/` validate runtime MQTT/API payloads (telemetry, aggregate, alert, prediction), the TypeScript types in `src/types.ts` give compile-time safety for the same shapes, and `src/topics.ts` centralizes the MQTT topic strings so devices, backend services, and the frontend never diverge on naming. Value ranges in both the schemas and the types match the firmware's own validation logic (e.g. `0 ≤ k2u ≤ 100`, `40 ≤ freq ≤ 70`), so this package should be treated as the single source of truth whenever any service needs to read, write, or validate a K₂U payload.

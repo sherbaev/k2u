@@ -1,0 +1,21 @@
+{
+  "name": "k2u-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "K2U voltage-unbalance monitoring & RUL prediction platform (monorepo)",
+  "type": "module",
+  "scripts": {
+    "test": "pnpm -r test",
+    "test:core": "pnpm --filter @k2u/core test",
+    "up": "docker compose up -d",
+    "down": "docker compose down"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=20"
+  }
+}

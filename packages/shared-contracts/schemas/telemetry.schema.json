@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://k2u.local/schemas/telemetry.schema.json",
+  "title": "Telemetry",
+  "description": "Payload published every ~10s by a K2U monitoring device.",
+  "type": "object",
+  "properties": {
+    "ts": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "site_id": {
+      "type": "string"
+    },
+    "dev_id": {
+      "type": "string"
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "u_a": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 500
+    },
+    "u_b": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 500
+    },
+    "u_c": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 500
+    },
+    "u_ab": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 600
+    },
+    "u_bc": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 600
+    },
+    "u_ca": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 600
+    },
+    "k2u": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "phi2": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 360
+    },
+    "freq": {
+      "type": "number",
+      "minimum": 40,
+      "maximum": 70
+    },
+    "i_a": {
+      "type": "number",
+      "minimum": 0
+    },
+    "i_b": {
+      "type": "number",
+      "minimum": 0
+    },
+    "i_c": {
+      "type": "number",
+      "minimum": 0
+    },
+    "temp": {
+      "type": "number",
+      "minimum": -40,
+      "maximum": 150
+    },
+    "status": {
+      "type": "string",
+      "enum": ["NORMAL", "WARNING", "CRITICAL"]
+    },
+    "buf_fill": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "source": {
+      "type": "string",
+      "enum": ["device", "manual", "import"],
+      "default": "device"
+    }
+  },
+  "required": ["ts", "site_id", "dev_id", "seq", "k2u", "status"],
+  "additionalProperties": false
+}

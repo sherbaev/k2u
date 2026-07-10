@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://k2u.local/schemas/prediction.schema.json",
+  "title": "Prediction",
+  "description": "Remaining-useful-life (RUL) prediction output.",
+  "type": "object",
+  "properties": {
+    "ts": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "site_id": {
+      "type": "string"
+    },
+    "dev_id": {
+      "type": "string"
+    },
+    "rul": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Relative remaining resource, 0..1"
+    },
+    "rul_lo": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "rul_hi": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "k2u_forecast": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "balancer_need": {
+      "type": "string",
+      "enum": ["none", "recommended", "required"]
+    },
+    "payback": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Payback period, years"
+    }
+  },
+  "required": ["ts", "site_id", "dev_id", "rul", "balancer_need"],
+  "additionalProperties": false
+}

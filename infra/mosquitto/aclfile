@@ -1,0 +1,20 @@
+# Per-device ACL: each device may only touch its own topic subtree.
+# Username convention: the device id (e.g. K2U-01). One block per device.
+#
+# The backend ingestion service (username: backend) subscribes to everything
+# and publishes only to cmd topics.
+
+user backend
+topic read  site/+/dev/+/telemetry
+topic read  site/+/dev/+/aggregate
+topic read  site/+/dev/+/alert
+topic read  site/+/dev/+/ack
+topic write site/+/dev/+/cmd
+
+# --- Example device: site UZT-TELECOM-01, device K2U-01 ---
+user K2U-01
+topic write site/UZT-TELECOM-01/dev/K2U-01/telemetry
+topic write site/UZT-TELECOM-01/dev/K2U-01/aggregate
+topic write site/UZT-TELECOM-01/dev/K2U-01/alert
+topic write site/UZT-TELECOM-01/dev/K2U-01/ack
+topic read  site/UZT-TELECOM-01/dev/K2U-01/cmd

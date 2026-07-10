@@ -1,0 +1,72 @@
+# Full-stack local bring-up: infra + all three services.
+# Production deploy is per-service on Coolify (see infra/coolify/README.md); this
+# compose file mirrors that topology for local end-to-end testing.
+#
+#   docker compose up -d --build
+#   # dashboard: http://localhost:8080   backend: http://localhost:3000
+#   # then optionally: node apps/backend/tools/sim-publisher.mjs
+services:
+  mongo:
+    image: mongo:7
+    container_name: k2u-mongo
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+    # internal only (no public port); other services reach it as mongo:27017
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: k2u-mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"   # dev plaintext (devices/sim-publisher)
+      - "8883:8883"   # TLS (needs certs in infra/mosquitto/certs)
+    volumes:
+      - ./infra/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./infra/mosquitto/aclfile:/mosquitto/config/aclfile:ro
+      - mosquitto-data:/mosquitto/data
+
+  ai-service:
+    build:
+      context: ./apps/ai-service
+    container_name: k2u-ai
+    restart: unless-stopped
+    environment:
+      - MODEL_PATH=/app/artifacts
+    # internal only; backend reaches it as ai-service:8000
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    container_name: k2u-backend
+    restart: unless-stopped
+    depends_on: [mongo, mosquitto, ai-service]
+    environment:
+      - PORT=3000
+      - MONGO_URI=mongodb://mongo:27017/k2u
+      - MQTT_URL=mqtt://mosquitto:1883
+      - AI_URL=http://ai-service:8000
+      - JWT_SECRET=${JWT_SECRET:-change-me}
+      - AUTH_REQUIRED=${AUTH_REQUIRED:-false}
+      - SEED_ADMIN_USER=${SEED_ADMIN_USER:-admin}
+      - SEED_ADMIN_PASSWORD=${SEED_ADMIN_PASSWORD:-}
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:8080}
+    ports:
+      - "3000:3000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+    container_name: k2u-frontend
+    restart: unless-stopped
+    depends_on: [backend]
+    ports:
+      - "8080:80"
+
+volumes:
+  mongo-data:
+  mosquitto-data:
