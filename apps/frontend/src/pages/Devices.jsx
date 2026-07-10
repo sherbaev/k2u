@@ -18,7 +18,6 @@ import {
   Divider,
   IconButton,
   Tooltip,
-  Chip,
 } from "@mui/material";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
@@ -262,7 +261,7 @@ export default function Devices() {
         title="Devices"
         subtitle="ESP32 monitoring units deployed across sites, with live K₂U status and location."
         actions={
-          <Stack direction="row" spacing={1.5} alignItems="center">
+          <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" useFlexGap>
             <Tooltip title={showCoords ? "Hide coordinates" : "Show coordinates"}>
               <IconButton
                 onClick={() => setShowCoords(!showCoords)}
@@ -428,17 +427,6 @@ export default function Devices() {
                         <DeviceLifecycleChip status={d.status} size="small" />
                       </Stack>
 
-                      {d.simulated && (
-                        <Tooltip title="driven by the hourly simulator">
-                          <Chip
-                            size="small"
-                            variant="outlined"
-                            icon={<Sparkles size={12} />}
-                            label="Simulated"
-                            sx={{ mt: 1 }}
-                          />
-                        </Tooltip>
-                      )}
                       {(d.status === "receiving" || d.status === "offline") && (
                         <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
                           last seen {formatAge(d.lastSeenAgeSec)}

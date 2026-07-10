@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Grid, Card, CardContent, Typography, Box, Chip, Stack, MenuItem, Select, FormControl, InputLabel } from "@mui/material";
 import { LayoutDashboard, Radio, ShieldCheck, BellRing, TrendingUp } from "lucide-react";
+import NomogramLegend from "../components/NomogramLegend.jsx";
 import { useLive } from "../lib/useLive.js";
 import { api } from "../lib/api.js";
 import Nomogram from "../components/Nomogram.jsx";
@@ -111,8 +112,13 @@ export default function Dashboard() {
         title="Overview"
         subtitle="Fleet-wide K₂U status, live nomogram and GOST 32144-2013 compliance for the selected device."
         actions={
-          <Stack direction="row" spacing={2} alignItems="center">
-            <FormControl size="small" sx={{ minWidth: 200 }}>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1.5}
+            alignItems={{ xs: "stretch", sm: "center" }}
+            sx={{ width: { xs: "100%", sm: "auto" } }}
+          >
+            <FormControl size="small" sx={{ width: { xs: "100%", sm: 200 } }}>
               <InputLabel>Device</InputLabel>
               <Select label="Device" value={devId ?? ""} onChange={(e) => setDevId(e.target.value)}>
                 {devIds.length === 0 && <MenuItem value="">(waiting…)</MenuItem>}
@@ -125,6 +131,7 @@ export default function Dashboard() {
               size="small"
               color={connected ? "success" : "default"}
               label={connected ? "live" : "disconnected"}
+              sx={{ alignSelf: { xs: "flex-start", sm: "center" } }}
             />
           </Stack>
         }
@@ -173,8 +180,8 @@ export default function Dashboard() {
       {/* Centerpiece row: prominent draggable nomogram + interactive analyzer */}
       <Grid container spacing={2} sx={{ mt: 0.25 }}>
         <Grid item xs={12} lg={6}>
-          <Card sx={{ height: "100%" }}>
-            <CardContent>
+          <Card sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
+            <CardContent sx={{ display: "flex", flexDirection: "column", flexGrow: 1 }}>
               <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
                 <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
                   K₂U polar nomogram
@@ -183,12 +190,31 @@ export default function Dashboard() {
                   {devId || "no device"}
                 </Typography>
               </Stack>
-              <Box sx={{ width: "100%", maxWidth: 560, mx: "auto" }}>
-                <Nomogram point={analyzerPoint} trail={trail} onPoint={handleNomogramDrag} />
+              <Box
+                sx={{
+                  flexGrow: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  py: 1,
+                  minWidth: 0,
+                }}
+              >
+                <Box
+                  sx={{
+                    width: "100%",
+                    maxWidth: { xs: 340, sm: 460, md: 500, lg: 520 },
+                    aspectRatio: "1 / 1",
+                    mx: "auto",
+                  }}
+                >
+                  <Nomogram point={analyzerPoint} trail={trail} onPoint={handleNomogramDrag} />
+                </Box>
               </Box>
-              <Typography variant="caption" color="text.secondary" sx={{ display: "block", textAlign: "center", mt: 0.5 }}>
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", textAlign: "center" }}>
                 Drag the operating point to explore K₂U — iso-K₂U contours (2–14%) with GOST 2%/4% zones; faint trail is device history.
               </Typography>
+              <NomogramLegend />
             </CardContent>
           </Card>
         </Grid>

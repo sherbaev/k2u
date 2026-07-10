@@ -7,14 +7,12 @@ import {
   CardContent,
   Typography,
   Stack,
-  Chip,
   Button,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   Alert,
-  Tooltip,
   Link,
 } from "@mui/material";
 import {
@@ -31,7 +29,6 @@ import {
   Building2,
   MapPin,
   MapPinOff,
-  Sparkles,
   Activity,
   TrendingUp,
   Radio,
@@ -243,7 +240,7 @@ export default function DeviceDetail() {
         title={device?.name || devId}
         subtitle={`${devId} · ${device?.siteId || "—"} · ${DEVICE_TYPE_LABEL[device?.deviceType] || "Device"}`}
         actions={
-          <Stack direction="row" spacing={1.25}>
+          <Stack direction="row" spacing={1.25} flexWrap="wrap" useFlexGap>
             <Button
               variant="outlined"
               startIcon={<Pencil size={16} />}
@@ -289,16 +286,6 @@ export default function DeviceDetail() {
         <CardContent>
           <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" useFlexGap>
             <DeviceLifecycleChip status={device?.status} />
-            {device?.simulated && (
-              <Tooltip title="driven by the hourly simulator">
-                <Chip
-                  size="small"
-                  variant="outlined"
-                  icon={<Sparkles size={13} />}
-                  label="Simulated"
-                />
-              </Tooltip>
-            )}
             {(device?.status === "receiving" || device?.status === "offline") && (
               <Typography variant="body2" color="text.secondary">
                 last seen {formatAge(device?.lastSeenAgeSec)}

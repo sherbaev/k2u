@@ -2,6 +2,12 @@ import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { deviceStatus } from "./device-status.js";
+
+/** Strip operator-only fields (e.g. `simulated`) before returning a device. */
+function publicDevice<T extends Record<string, unknown>>(d: T): Omit<T, "simulated"> {
+  const { simulated: _simulated, ...rest } = d as any;
+  return rest;
+}
 import { Telemetry } from "../schemas/telemetry.schema.js";
 import { Aggregate } from "../schemas/aggregate.schema.js";
 import { AlertEvent } from "../schemas/event.schema.js";
@@ -34,7 +40,7 @@ export class ApiService {
 
   async listDevices(siteId?: string) {
     const list = await this.devices.find(siteId ? { siteId } : {}).lean();
-    return list.map((d) => ({ ...d, ...deviceStatus(d as any) }));
+    return list.map((d) => publicDevice({ ...d, ...deviceStatus(d as any) }));
   }
 
   async getDevice(devId: string) {
@@ -42,13 +48,14 @@ export class ApiService {
     if (!dev) return null;
     const latest = await this.telemetry.findOne({ "meta.devId": devId }).sort({ ts: -1 }).lean();
     const prediction = await this.predictions.findOne({ devId }).sort({ ts: -1 }).lean();
-    return { ...dev, ...deviceStatus(dev as any), latest, prediction };
+    return { ...publicDevice({ ...dev, ...deviceStatus(dev as any) }), latest, prediction };
   }
 
   async patchDevice(devId: string, body: Record<string, unknown>) {
-    const { devId: _ignore, _id, ...rest } = body as any;
+    // `simulated` is operator-only; never let it be set via the public API.
+    const { devId: _ignore, _id, simulated: _sim, ...rest } = body as any;
     const dev = await this.devices.findOneAndUpdate({ devId }, { $set: rest }, { new: true }).lean();
-    return dev ? { ...dev, ...deviceStatus(dev as any) } : null;
+    return dev ? publicDevice({ ...dev, ...deviceStatus(dev as any) }) : null;
   }
 
   upsertSite(body: Record<string, unknown>) {
@@ -56,9 +63,10 @@ export class ApiService {
     return this.sites.findOneAndUpdate({ siteId }, { $set: { siteId, ...rest } }, { upsert: true, new: true }).lean();
   }
 
-  upsertDevice(body: Record<string, unknown>) {
-    const { devId, ...rest } = body;
-    return this.devices.findOneAndUpdate({ devId }, { $set: { devId, ...rest } }, { upsert: true, new: true }).lean();
+  async upsertDevice(body: Record<string, unknown>) {
+    const { devId, simulated: _sim, ...rest } = body as any;
+    const dev = await this.devices.findOneAndUpdate({ devId }, { $set: { devId, ...rest } }, { upsert: true, new: true }).lean();
+    return publicDevice(dev as any);
   }
 
   /** Delete a device and all of its data. */

@@ -147,14 +147,14 @@ export default function Nomogram({ point, trail = [], onPoint }) {
       {/* trail */}
       {trail.map((p, i) => {
         const [px, py] = dataToSvg(clamp(p.x, DATA_MIN, DATA_MAX), clamp(p.y, DATA_MIN, DATA_MAX));
-        return <circle key={i} cx={px} cy={py} r={2} fill={colors.trail} opacity={0.15 + (0.5 * i) / Math.max(1, trail.length)} />;
+        return <circle key={i} cx={px} cy={py} r={2.5} fill={colors.trail} opacity={0.2 + (0.55 * i) / Math.max(1, trail.length)} />;
       })}
 
       {/* operating point */}
       {cur && (
         <g>
-          <line x1={bx} y1={by} x2={cur[0]} y2={cur[1]} stroke={colors.operating} strokeWidth={1.2} opacity={0.6} />
-          <circle cx={cur[0]} cy={cur[1]} r={7} fill={colors.operating} stroke={colors.operatingStroke} strokeWidth={2} />
+          <line x1={bx} y1={by} x2={cur[0]} y2={cur[1]} stroke={colors.operating} strokeWidth={1.4} opacity={0.65} />
+          <circle cx={cur[0]} cy={cur[1]} r={9.5} fill={colors.operating} stroke={colors.operatingStroke} strokeWidth={2.5} />
         </g>
       )}
     </svg>

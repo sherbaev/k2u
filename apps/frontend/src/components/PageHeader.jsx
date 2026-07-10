@@ -8,13 +8,13 @@ import { Box, Stack, Typography } from "@mui/material";
 export default function PageHeader({ icon, title, subtitle, actions }) {
   return (
     <Stack
-      direction={{ xs: "column", sm: "row" }}
-      alignItems={{ xs: "flex-start", sm: "center" }}
+      direction={{ xs: "column", md: "row" }}
+      alignItems={{ xs: "stretch", md: "center" }}
       justifyContent="space-between"
-      spacing={2}
-      sx={{ mb: 3 }}
+      spacing={{ xs: 1.5, md: 2 }}
+      sx={{ mb: 3, minWidth: 0 }}
     >
-      <Stack direction="row" spacing={1.75} alignItems="center">
+      <Stack direction="row" spacing={1.75} alignItems="center" sx={{ minWidth: 0 }}>
         {icon && (
           <Box
             sx={{
@@ -33,7 +33,7 @@ export default function PageHeader({ icon, title, subtitle, actions }) {
             {icon}
           </Box>
         )}
-        <Box>
+        <Box sx={{ minWidth: 0 }}>
           <Typography variant="h5" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
             {title}
           </Typography>
@@ -44,7 +44,20 @@ export default function PageHeader({ icon, title, subtitle, actions }) {
           )}
         </Box>
       </Stack>
-      {actions && <Box>{actions}</Box>}
+      {actions && (
+        <Box
+          sx={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            gap: 1.5,
+            width: { xs: "100%", md: "auto" },
+            "& > *": { minWidth: 0 },
+          }}
+        >
+          {actions}
+        </Box>
+      )}
     </Stack>
   );
 }
