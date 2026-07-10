@@ -8,7 +8,6 @@
 services:
   mongo:
     image: mongo:7
-    container_name: k2u-mongo
     restart: unless-stopped
     volumes:
       - mongo-data:/data/db
@@ -16,7 +15,6 @@ services:
 
   mosquitto:
     image: eclipse-mosquitto:2
-    container_name: k2u-mosquitto
     restart: unless-stopped
     ports:
       - "1883:1883"   # dev plaintext (devices/sim-publisher)
@@ -29,7 +27,6 @@ services:
   ai-service:
     build:
       context: ./apps/ai-service
-    container_name: k2u-ai
     restart: unless-stopped
     environment:
       - MODEL_PATH=/app/artifacts
@@ -39,7 +36,6 @@ services:
     build:
       context: .
       dockerfile: apps/backend/Dockerfile
-    container_name: k2u-backend
     restart: unless-stopped
     depends_on: [mongo, mosquitto, ai-service]
     environment:
@@ -61,7 +57,6 @@ services:
     build:
       context: .
       dockerfile: apps/frontend/Dockerfile
-    container_name: k2u-frontend
     restart: unless-stopped
     depends_on: [backend]
     ports:
