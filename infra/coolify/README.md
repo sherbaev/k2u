@@ -43,6 +43,42 @@ network. Matches thesis §3.1 and §3.5.
 - MongoDB and the AI service stay internal (no public port).
 - Nightly `mongodump` to external storage.
 
+## Prerequisite: publish the repo
+
+Coolify **builds from a Git repository it can clone** (or from pre-built registry
+images) — it cannot deploy an unpushed local checkout. Push this repo to a Git
+host reachable from the Coolify server first:
+
+```bash
+# GitHub CLI:
+gh repo create k2u-platform --private --source=. --remote=origin --push
+# or manual:
+git remote add origin https://github.com/<you>/k2u-platform.git && git push -u origin main
+```
+
+For a **private** repo, add a deploy key / GitHub App in Coolify so it can clone.
+
+## Option A — scripted deploy via the Coolify API
+
+Once the repo is pushed:
+
+```bash
+export COOLIFY_URL="http://178.105.41.164:8000"
+export COOLIFY_TOKEN="<your-api-token>"      # never commit this
+export GIT_REPO="https://github.com/<you>/k2u-platform"
+./infra/coolify/deploy.sh
+```
+
+The script verifies auth, picks the server, creates the project, registers a
+Docker-Compose application from your repo, and triggers a deploy. Then set the
+env vars + domain in the UI (below). Endpoint paths follow the Coolify v4 API and
+are flagged `[API]` in the script if your version needs tweaks.
+
+> Security: the token is read from `COOLIFY_TOKEN` and never written to disk.
+> Rotate it in Coolify (Settings → API Tokens) after the first successful deploy.
+
+## Option B — Coolify UI, resource by resource
+
 ## Local full-stack test (mirrors this topology)
 
 ```bash
