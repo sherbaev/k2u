@@ -1,4 +1,5 @@
 import { useMemo, useRef } from "react";
+import { useTheme, alpha } from "@mui/material/styles";
 import {
   SVG_SIZE,
   PAD,
@@ -20,6 +21,8 @@ const TICKS = [0.84, 0.88, 0.92, 0.96, 1.0, 1.04, 1.08, 1.12, 1.16];
  * K₂U polar nomogram (thesis §3.3): iso-K₂U curves, 2%/4% GOST zones, radial
  * phase-angle lines, live operating point + trail. Optionally interactive:
  * pass onPoint(x, y) to receive dragged coordinates (educational inverse mode).
+ * Fully theme-aware — every stroke/fill is derived from the active MUI
+ * palette so the plot reads correctly in both light and dark mode.
  *
  * Props:
  *   point   : { x, y } current operating ratios (U_BC/U_AB, U_CA/U_AB), optional
@@ -28,13 +31,36 @@ const TICKS = [0.84, 0.88, 0.92, 0.96, 1.0, 1.04, 1.08, 1.12, 1.16];
  */
 export default function Nomogram({ point, trail = [], onPoint }) {
   const ref = useRef(null);
+  const theme = useTheme();
+  const dark = theme.palette.mode === "dark";
 
-  // Static layers computed once.
+  const colors = useMemo(
+    () => ({
+      gridMajor: dark ? "#4c5768" : "#b0b7c3",
+      gridMinor: dark ? "#28313d" : "#e2e5ea",
+      axisText: dark ? "#8d99a8" : "#6b7280",
+      isoMajor: dark ? "#7987a0" : "#8a94a6",
+      isoMinor: dark ? "#3a4453" : "#c7cdd8",
+      isoLabel: dark ? "#a3aebc" : "#5b6472",
+      radialMajor: dark ? "#414d5e" : "#cfd4dd",
+      radialMinor: dark ? "#28313d" : "#e6e9ee",
+      balanceMark: dark ? "#e8edf3" : "#111827",
+      trail: theme.palette.primary.light,
+      operating: theme.palette.primary.main,
+      operatingStroke: dark ? "#0f151c" : "#ffffff",
+      bandNormal: alpha(theme.palette.success.main, dark ? 0.22 : 0.12),
+      bandWarning: alpha(theme.palette.warning.main, dark ? 0.22 : 0.12),
+      bandCritical: alpha(theme.palette.error.main, dark ? 0.2 : 0.1),
+    }),
+    [dark, theme],
+  );
+
+  // Static layers computed once per theme (colors depend on mode).
   const layers = useMemo(() => {
     const bands = [
-      { d: gostBandPath(0, 0.02), fill: "rgba(46,125,50,.12)" },
-      { d: gostBandPath(0.02, 0.04), fill: "rgba(237,108,2,.12)" },
-      { d: gostBandPath(0.04, 0.2), fill: "rgba(211,47,47,.10)" },
+      { d: gostBandPath(0, 0.02), fill: colors.bandNormal },
+      { d: gostBandPath(0.02, 0.04), fill: colors.bandWarning },
+      { d: gostBandPath(0.04, 0.2), fill: colors.bandCritical },
     ];
     const iso = ISO_EPS.map((eps) => ({
       d: isoCurvePath(eps),
@@ -45,7 +71,7 @@ export default function Nomogram({ point, trail = [], onPoint }) {
     const radials = [];
     for (let a = 0; a < 360; a += 15) radials.push({ ...radialLine(a), major: a % 30 === 0 });
     return { bands, iso, radials };
-  }, []);
+  }, [colors]);
 
   const [bx, by] = dataToSvg(1, 1);
   const cur = point ? dataToSvg(clamp(point.x, DATA_MIN, DATA_MAX), clamp(point.y, DATA_MIN, DATA_MAX)) : null;
@@ -86,13 +112,13 @@ export default function Nomogram({ point, trail = [], onPoint }) {
           const [vx2, vy2] = dataToSvg(t, DATA_MAX);
           const [hx1, hy1] = dataToSvg(DATA_MIN, t);
           const [hx2, hy2] = dataToSvg(DATA_MAX, t);
-          const stroke = major ? "#b0b7c3" : "#e2e5ea";
+          const stroke = major ? colors.gridMajor : colors.gridMinor;
           return (
             <g key={t}>
               <line x1={vx1} y1={vy1} x2={vx2} y2={vy2} stroke={stroke} />
               <line x1={hx1} y1={hy1} x2={hx2} y2={hy2} stroke={stroke} />
-              <text x={vx1} y={vy1 + 16} textAnchor="middle" fontSize="10" fill="#6b7280">{t.toFixed(2)}</text>
-              <text x={hx1 - 6} y={hy1 + 3} textAnchor="end" fontSize="10" fill="#6b7280">{t.toFixed(2)}</text>
+              <text x={vx1} y={vy1 + 16} textAnchor="middle" fontSize="10" fill={colors.axisText}>{t.toFixed(2)}</text>
+              <text x={hx1 - 6} y={hy1 + 3} textAnchor="end" fontSize="10" fill={colors.axisText}>{t.toFixed(2)}</text>
             </g>
           );
         })}
@@ -102,8 +128,8 @@ export default function Nomogram({ point, trail = [], onPoint }) {
       <g clipPath="url(#plot-clip)" fill="none">
         {layers.iso.map((c, i) => (
           <g key={i}>
-            <path d={c.d} stroke={c.major ? "#8a94a6" : "#c7cdd8"} strokeWidth={c.major ? 1.4 : 0.8} />
-            <text x={c.at[0] + 4} y={c.at[1] - 4} fontSize="10" fill="#5b6472">{c.label}</text>
+            <path d={c.d} stroke={c.major ? colors.isoMajor : colors.isoMinor} strokeWidth={c.major ? 1.4 : 0.8} />
+            <text x={c.at[0] + 4} y={c.at[1] - 4} fontSize="10" fill={colors.isoLabel}>{c.label}</text>
           </g>
         ))}
       </g>
@@ -111,24 +137,24 @@ export default function Nomogram({ point, trail = [], onPoint }) {
       {/* radial phase-angle lines */}
       <g clipPath="url(#plot-clip)">
         {layers.radials.map((r, i) => (
-          <line key={i} x1={r.x1} y1={r.y1} x2={r.x2} y2={r.y2} stroke={r.major ? "#cfd4dd" : "#e6e9ee"} />
+          <line key={i} x1={r.x1} y1={r.y1} x2={r.x2} y2={r.y2} stroke={r.major ? colors.radialMajor : colors.radialMinor} />
         ))}
       </g>
 
       {/* balance mark */}
-      <circle cx={bx} cy={by} r={3} fill="#111827" />
+      <circle cx={bx} cy={by} r={3} fill={colors.balanceMark} />
 
       {/* trail */}
       {trail.map((p, i) => {
         const [px, py] = dataToSvg(clamp(p.x, DATA_MIN, DATA_MAX), clamp(p.y, DATA_MIN, DATA_MAX));
-        return <circle key={i} cx={px} cy={py} r={2} fill="#1565c0" opacity={0.15 + (0.5 * i) / Math.max(1, trail.length)} />;
+        return <circle key={i} cx={px} cy={py} r={2} fill={colors.trail} opacity={0.15 + (0.5 * i) / Math.max(1, trail.length)} />;
       })}
 
       {/* operating point */}
       {cur && (
         <g>
-          <line x1={bx} y1={by} x2={cur[0]} y2={cur[1]} stroke="#1565c0" strokeWidth={1.2} opacity={0.6} />
-          <circle cx={cur[0]} cy={cur[1]} r={7} fill="#1565c0" stroke="#fff" strokeWidth={2} />
+          <line x1={bx} y1={by} x2={cur[0]} y2={cur[1]} stroke={colors.operating} strokeWidth={1.2} opacity={0.6} />
+          <circle cx={cur[0]} cy={cur[1]} r={7} fill={colors.operating} stroke={colors.operatingStroke} strokeWidth={2} />
         </g>
       )}
     </svg>

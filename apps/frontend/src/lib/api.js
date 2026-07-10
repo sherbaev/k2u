@@ -16,4 +16,5 @@ export const api = {
   compliance: (params) => http.get("/api/compliance", { params }).then((r) => r.data),
   createDevice: (body) => http.post("/api/devices", body).then((r) => r.data),
   createSite: (body) => http.post("/api/sites", body).then((r) => r.data),
+  seedDemo: (days) => http.post("/api/seed/demo", { days }).then((r) => r.data),
 };

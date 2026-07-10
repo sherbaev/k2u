@@ -25,18 +25,23 @@ import {
   Radio,
   PenLine,
   FileText,
+  FlaskConical,
   Wifi,
   WifiOff,
   LogOut,
   ChevronDown,
+  Sun,
+  Moon,
 } from "lucide-react";
 import Dashboard from "./pages/Dashboard.jsx";
 import Devices from "./pages/Devices.jsx";
 import ManualEntry from "./pages/ManualEntry.jsx";
 import Reports from "./pages/Reports.jsx";
+import Research from "./pages/Research.jsx";
 import Login from "./pages/Login.jsx";
 import { isAuthed, signOut, currentUser } from "./lib/auth.js";
 import { useLive } from "./lib/useLive.js";
+import { useThemeMode } from "./lib/ThemeModeContext.jsx";
 
 const DRAWER_WIDTH = 232;
 
@@ -45,6 +50,7 @@ const NAV_ITEMS = [
   { to: "/devices", label: "Devices", icon: Radio },
   { to: "/manual", label: "Manual entry", icon: PenLine },
   { to: "/reports", label: "Reports", icon: FileText },
+  { to: "/research", label: "Research", icon: FlaskConical },
 ];
 
 function NavList({ onNavigate }) {
@@ -92,6 +98,7 @@ function AppShell({ children }) {
   const navigate = useNavigate();
   const [userMenuAnchor, setUserMenuAnchor] = useState(null);
   const user = currentUser();
+  const { mode, toggle } = useThemeMode();
 
   function handleSignOut() {
     setUserMenuAnchor(null);
@@ -159,6 +166,19 @@ function AppShell({ children }) {
               label="GOST 32144-2013"
               sx={{ display: { xs: "none", sm: "inline-flex" } }}
             />
+            <IconButton
+              onClick={toggle}
+              size="small"
+              aria-label="Toggle color mode"
+              title={mode === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              sx={{
+                border: "1px solid",
+                borderColor: "divider",
+                borderRadius: "8px",
+              }}
+            >
+              {mode === "dark" ? <Sun size={17} /> : <Moon size={17} />}
+            </IconButton>
             <IconButton onClick={(e) => setUserMenuAnchor(e.currentTarget)} size="small">
               <Stack direction="row" spacing={1} alignItems="center">
                 <Avatar sx={{ width: 30, height: 30, fontSize: "0.85rem", bgcolor: "primary.main" }}>
@@ -223,6 +243,7 @@ export default function App() {
                 <Route path="/devices" element={<Devices />} />
                 <Route path="/manual" element={<ManualEntry />} />
                 <Route path="/reports" element={<Reports />} />
+                <Route path="/research" element={<Research />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </AppShell>

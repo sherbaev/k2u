@@ -1,21 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  Grid,
-  Card,
-  CardContent,
-  Typography,
-  Box,
-  Chip,
-  Stack,
-  MenuItem,
-  Select,
-  FormControl,
-  InputLabel,
-} from "@mui/material";
+import { Grid, Card, CardContent, Typography, Box, Chip, Stack, MenuItem, Select, FormControl, InputLabel } from "@mui/material";
 import { LayoutDashboard, Radio, ShieldCheck, BellRing, TrendingUp } from "lucide-react";
 import { useLive } from "../lib/useLive.js";
 import { api } from "../lib/api.js";
 import Nomogram from "../components/Nomogram.jsx";
+import K2uAnalyzer from "../components/K2uAnalyzer.jsx";
 import OperatingPointCard from "../components/OperatingPointCard.jsx";
 import VoltageChart from "../components/VoltageChart.jsx";
 import AlertsPanel from "../components/AlertsPanel.jsx";
@@ -38,6 +27,7 @@ export default function Dashboard() {
   const [seedEvents, setSeedEvents] = useState([]);
   const [devices, setDevices] = useState([]);
   const [sites, setSites] = useState([]);
+  const [analyzerPoint, setAnalyzerPoint] = useState(null);
 
   // Auto-select the first device that appears.
   useEffect(() => {
@@ -90,7 +80,6 @@ export default function Dashboard() {
   }, [devices, sites, latest, events, devIds.length]);
 
   const telemetry = devId ? latest[devId] : null;
-  const point = ratios(telemetry);
 
   const devHistory = useMemo(
     () => history.filter((t) => (t.meta?.devId ?? t.dev_id) === devId),
@@ -131,6 +120,7 @@ export default function Dashboard() {
         }
       />
 
+      {/* Stat row */}
       <Grid container spacing={2} sx={{ mb: 1 }}>
         <Grid item xs={12} sm={6} lg={3}>
           <StatCard
@@ -170,35 +160,48 @@ export default function Dashboard() {
         </Grid>
       </Grid>
 
-      <Grid container spacing={2}>
-        <Grid item xs={12} md={7} lg={6}>
-          <Card>
+      {/* Centerpiece row: compact nomogram + interactive analyzer */}
+      <Grid container spacing={2} sx={{ mt: 0.25 }}>
+        <Grid item xs={12} lg={5}>
+          <Card sx={{ height: "100%" }}>
             <CardContent>
-              <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-                K₂U polar nomogram
+              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                  K₂U polar nomogram
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {devId || "no device"}
+                </Typography>
+              </Stack>
+              <Box sx={{ maxWidth: 440, mx: "auto" }}>
+                <Nomogram point={analyzerPoint} trail={trail} />
+              </Box>
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", textAlign: "center", mt: 0.5 }}>
+                Iso-K₂U contours (2–14%) with GOST 2%/4% zones; dot follows the analyzer, faint trail is device history.
               </Typography>
-              <Nomogram point={point} trail={trail} />
             </CardContent>
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={5} lg={6}>
-          <Stack spacing={2}>
-            <OperatingPointCard telemetry={telemetry} />
-            <RulPanel prediction={prediction} />
-          </Stack>
+        <Grid item xs={12} lg={7}>
+          <K2uAnalyzer telemetry={telemetry} onPointChange={setAnalyzerPoint} />
         </Grid>
+      </Grid>
 
-        <Grid item xs={12} lg={8}>
-          <Card>
-            <CardContent>
-              <VoltageChart history={devHistory} />
-            </CardContent>
-          </Card>
+      {/* Compact supporting grid */}
+      <Grid container spacing={2} sx={{ mt: 0.25 }}>
+        <Grid item xs={12} md={6} lg={4}>
+          <OperatingPointCard telemetry={telemetry} />
         </Grid>
-
-        <Grid item xs={12} lg={4}>
+        <Grid item xs={12} md={6} lg={4}>
+          <RulPanel prediction={prediction} />
+        </Grid>
+        <Grid item xs={12} md={12} lg={4}>
           <GostPanel aggregates={aggregates} />
+        </Grid>
+
+        <Grid item xs={12}>
+          <VoltageChart history={devHistory} />
         </Grid>
 
         <Grid item xs={12}>

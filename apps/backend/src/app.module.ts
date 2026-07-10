@@ -11,6 +11,7 @@ import { IngestionModule } from "./ingestion/ingestion.module.js";
 import { PredictionsModule } from "./predictions/predictions.module.js";
 import { ComplianceModule } from "./compliance/compliance.module.js";
 import { ManualModule } from "./manual/manual.module.js";
+import { SeedModule } from "./seed/seed.module.js";
 import { ApiModule } from "./api/api.module.js";
 
 @Module({
@@ -26,6 +27,7 @@ import { ApiModule } from "./api/api.module.js";
     PredictionsModule,
     ComplianceModule,
     ManualModule,
+    SeedModule,
     ApiModule,
   ],
 })
