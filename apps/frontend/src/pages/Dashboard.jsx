@@ -7,6 +7,8 @@ import { useLive } from "../lib/useLive.js";
 import { api } from "../lib/api.js";
 import Nomogram from "../components/Nomogram.jsx";
 import K2uAnalyzer from "../components/K2uAnalyzer.jsx";
+import K2uFormulas from "../components/K2uFormulas.jsx";
+import { useK2uCalc } from "../lib/useK2uCalc.js";
 import OperatingPointCard from "../components/OperatingPointCard.jsx";
 import VoltageChart from "../components/VoltageChart.jsx";
 import AlertsPanel from "../components/AlertsPanel.jsx";
@@ -92,6 +94,10 @@ export default function Dashboard() {
   }, [devices, sites, latest, events, devIds.length]);
 
   const telemetry = devId ? latest[devId] : null;
+
+  // Single source of truth for the K₂U analyzer, shared by the compact input
+  // panel (beside the nomogram) and the full-width formulas block below.
+  const calc = useK2uCalc({ telemetry, onPointChange: setAnalyzerPoint, externalLineVoltages: dragVoltages });
 
   const devHistory = useMemo(
     () => history.filter((t) => (t.meta?.devId ?? t.dev_id) === devId),
@@ -224,7 +230,16 @@ export default function Dashboard() {
 
         <Grid item xs={12} md={5}>
           <CapturePanel filename="k2u-analyzer">
-            <K2uAnalyzer telemetry={telemetry} onPointChange={setAnalyzerPoint} externalLineVoltages={dragVoltages} />
+            <K2uAnalyzer calc={calc} />
+          </CapturePanel>
+        </Grid>
+      </Grid>
+
+      {/* Formulas — full-width block so the equations stay large and legible */}
+      <Grid container spacing={2} sx={{ mt: 0.25 }}>
+        <Grid item xs={12}>
+          <CapturePanel filename="k2u-formulas">
+            <K2uFormulas calc={calc} />
           </CapturePanel>
         </Grid>
       </Grid>

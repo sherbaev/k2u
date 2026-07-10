@@ -23,6 +23,15 @@ compliance, and predict each device's **Remaining Useful Life (RUL)** with a con
 > The core K₂U math is implemented and **cross-verified in three languages** — TypeScript, C++
 > and Python — agreeing to better than 0.001 %.
 
+<div align="center">
+
+### 🌐 [**Live demo →**](http://sw5vygcfeb34qjhkk6hklusv.178.105.41.164.sslip.io)
+
+Public, no login required. Two simulated ESP32 devices stream ~2 months of physics-based data that
+reproduces the paper's results. Every graph exports as **vector SVG** or **high-res PNG** for figures.
+
+</div>
+
 ---
 
 ## Table of contents
@@ -30,7 +39,9 @@ compliance, and predict each device's **Remaining Useful Life (RUL)** with a con
 - [What it does](#what-it-does)
 - [Architecture](#architecture)
 - [How data flows](#how-data-flows)
+- [The dashboard](#the-dashboard)
 - [The K₂U nomogram](#the-k2u-nomogram)
+- [Devices & firmware](#devices--firmware)
 - [AI: RUL prediction](#ai-rul-prediction)
 - [Alert state machine](#alert-state-machine)
 - [Tech stack](#tech-stack)
@@ -52,7 +63,8 @@ compliance, and predict each device's **Remaining Useful Life (RUL)** with a con
 | 🧠 | **Predicts** each device's Remaining Useful Life with an XGBoost model + conformal prediction intervals + a balancer-need decision layer. |
 | 🚨 | **Alerts** on GOST-band transitions (Telegram + dashboard), with cooldown to prevent flapping. |
 | ✍️ | **Works without hardware** — manual data entry + CSV import feed the exact same pipeline. |
-| 📄 | **Exports** GOST compliance reports to PDF / CSV / ZIP. |
+| 🧮 | **Explains itself** — an interactive K₂U analyzer recomputes the symmetrical-components and RMS β-method formulas live from any voltages you type or drag on the nomogram. |
+| 📄 | **Exports** GOST compliance reports to PDF / CSV / ZIP, and every dashboard graph to **vector SVG** or **high-res PNG** for papers. |
 
 ---
 
@@ -129,11 +141,39 @@ sequenceDiagram
 
 ---
 
+## The dashboard
+
+A React/MUI single-page app in **light and dark themes**, built to read as a finished product for
+thesis and journal figures. It is public by default (no login) — a per-user toggle hides or shows
+device coordinates, while all measurement data stays visible.
+
+| Area | What you get |
+|---|---|
+| **Overview** | Fleet stat cards (worst K₂U, sites in compliance, active alerts), the live nomogram beside the interactive analyzer, a full-width **Formulas** block, plus operating-point, RUL, GOST and voltage/K₂U time-series panels. |
+| **K₂U analyzer** | Type phase **or** line voltages (or drag the nomogram) and watch K₂U, φ₂, the GOST verdict and the ratio read-outs update instantly. "Load unbalanced example" seeds a textbook case. |
+| **Formulas** | The symmetrical-components derivation and the RMS β-method, each **substituted with your current numbers** — the equation and the result side by side, at readable width. |
+| **Figure export** | A camera button on every graph saves it as **vector SVG** (best for papers / dropping into a prompt) or a 2× **PNG** — capturing the graph's exact on-screen state. |
+| **Research** | Interactive, reproducible versions of the Scopus figures (RUL accuracy, measurement accuracy, ablation) with their own export. |
+| **Setup** | An ESP32 wiring/Fritzing guide, per-device firmware download, and install instructions. |
+
+```mermaid
+flowchart LR
+    IN["Type / drag voltages"] --> CALC["useK2uCalc()<br/>single source of truth"]
+    CALC --> A["Analyzer panel<br/>K₂U · φ₂ · GOST"]
+    CALC --> F["Formulas panel<br/>live substitution"]
+    CALC --> N["Nomogram<br/>operating point"]
+    N -- "drag" --> CALC
+```
+
+---
+
 ## The K₂U nomogram
 
 K₂U — the **negative-sequence voltage unbalance factor** — is the single quantity the whole
 platform revolves around (hence the name). It is displayed on a **polar nomogram**: the radius is
 K₂U (%), the angle is the negative-sequence phase φ₂, and concentric rings mark the GOST limits.
+The operating point is **draggable** — moving it feeds voltages back into the analyzer (educational
+inverse mode), and a faint trail shows the selected device's recent history.
 
 ```mermaid
 flowchart TB
@@ -147,6 +187,30 @@ flowchart TB
 
 > The forward/inverse transform round-trips to `<1e-7`, and the same math is implemented in
 > `packages/k2u-core` (TS), `apps/firmware/lib/k2u` (C++) and `apps/ai-service` (Python).
+
+---
+
+## Devices & firmware
+
+Registering a device generates a **unique dashboard URL** (`/devices/{DEV_ID}`) and a **matching
+firmware bundle** in one step — so a flashed ESP32 shows up at its own page automatically, no
+manual config. The generated `config.h` / `secrets.h` are pre-filled with the device's ID, site,
+MQTT topic (`site/{SITE_ID}/dev/{DEV_ID}/telemetry`) and reporting interval.
+
+```mermaid
+stateDiagram-v2
+    [*] --> provisioned: created (URL + firmware issued)
+    provisioned --> receiving: first telemetry arrives
+    receiving --> offline: no data past interval
+    offline --> receiving: data resumes
+    receiving --> archived: expiry date reached
+    provisioned --> archived: expiry date reached
+```
+
+Every device is fully editable at any time (name, coordinates, rated power, energy, reporting
+period, expiry) and deletable. The two built-in **simulated** devices — a PV inverter site and a
+telecom site — publish hourly and reproduce the paper's weekly-p95 K₂U (≈3 % PV, ≈4.3 % telecom)
+and RUL results, so the whole platform is explorable end-to-end without any hardware.
 
 ---
 
@@ -211,7 +275,7 @@ stateDiagram-v2
 | Broker | Eclipse Mosquitto 2 (TLS + per-device ACL) |
 | Database | MongoDB 7 (time-series collections) |
 | Backend | NestJS 10 · TypeScript · Mongoose · WebSocket · JWT |
-| Frontend | React 18 · Vite · MUI · Recharts · custom SVG nomogram |
+| Frontend | React 18 · Vite · MUI (light/dark) · Recharts · KaTeX · custom SVG nomogram · SVG/PNG figure export |
 | AI service | FastAPI · XGBoost · scikit-learn · conformal prediction |
 | Infra | Docker · Docker Compose · Coolify · Traefik (auto-HTTPS) |
 | Shared | `@k2u/core` (math) · `@k2u/shared-contracts` (JSON Schema + types) |
@@ -317,7 +381,10 @@ frontend, Traefik). Full walkthrough + security checklist in
 - [x] Backend: ingestion, REST/WS, alerts, predictions, GOST compliance, manual entry, JWT auth
 - [x] React dashboard: nomogram, live panels, manual entry, report export
 - [x] AI service: RUL + CQR + decision (reproduces paper metrics)
-- [x] Docker + Coolify deployment
+- [x] Docker + Coolify deployment (public live demo)
+- [x] Interactive analyzer + draggable nomogram + live-substituted formulas
+- [x] Per-device URL + matching firmware generator; device lifecycle & editing
+- [x] Figure export (vector SVG / high-res PNG) on every graph
 - [ ] Firmware store-and-forward (LittleFS) + calibration mode
 - [ ] Multi-tenant / multi-site RBAC
 
