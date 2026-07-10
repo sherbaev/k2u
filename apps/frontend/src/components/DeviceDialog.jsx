@@ -12,7 +12,10 @@ import {
   Alert,
   Divider,
   Typography,
+  Collapse,
+  Link,
 } from "@mui/material";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { api } from "../lib/api.js";
 import { toDateInputValue, fromDateInputValue } from "../lib/format.js";
 
@@ -30,7 +33,7 @@ function emptyForm() {
     name: "",
     devId: "",
     siteId: "",
-    deviceType: "pv_inverter",
+    deviceType: "generic",
     ratedPower: "",
     energyKwh: "",
     serviceAge: "",
@@ -47,7 +50,7 @@ function formFromDevice(device) {
     name: device?.name || "",
     devId: device?.devId || "",
     siteId: device?.siteId || "",
-    deviceType: device?.deviceType || "pv_inverter",
+    deviceType: device?.deviceType || "generic",
     ratedPower: Number.isFinite(device?.ratedPower) ? String(device.ratedPower) : "",
     energyKwh: Number.isFinite(device?.energyKwh) ? String(device.energyKwh) : "",
     serviceAge: Number.isFinite(device?.serviceAge) ? String(device.serviceAge) : "",
@@ -77,11 +80,13 @@ export default function DeviceDialog({ open, mode = "create", device, onClose, o
   const [form, setForm] = useState(isEdit ? formFromDevice(device) : emptyForm());
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   useEffect(() => {
     if (open) {
       setForm(isEdit ? formFromDevice(device) : emptyForm());
       setError("");
+      setShowAdvanced(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, device, isEdit]);
@@ -164,54 +169,59 @@ export default function DeviceDialog({ open, mode = "create", device, onClose, o
         <Stack spacing={2} sx={{ mt: 0.5 }}>
           {error && <Alert severity="error">{error}</Alert>}
 
-          <TextField label="Device name" fullWidth value={form.name} onChange={field("name")} autoFocus />
+          <TextField
+            label="Device name"
+            fullWidth
+            value={form.name}
+            onChange={field("name")}
+            autoFocus
+            helperText="A friendly label you'll recognise, e.g. “Rooftop meter A”."
+          />
 
-          <Stack direction="row" spacing={2}>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
             <TextField
               label="Device ID"
               fullWidth
               value={form.devId}
               onChange={field("devId")}
               disabled={isEdit}
-              helperText={isEdit ? "Device ID cannot be changed." : "Must match the ESP32's MQTT client / topic ID."}
+              helperText={
+                isEdit
+                  ? "Can't be changed — it's this device's permanent handle."
+                  : "Unique handle, like a hostname. Used in the device URL and its data topic."
+              }
             />
-            <TextField label="Site ID" fullWidth value={form.siteId} onChange={field("siteId")} />
-          </Stack>
-
-          <TextField label="Device type" select fullWidth value={form.deviceType} onChange={field("deviceType")}>
-            <MenuItem value="pv_inverter">PV inverter</MenuItem>
-            <MenuItem value="telecom_rect">Telecom rectifier</MenuItem>
-          </TextField>
-
-          <Stack direction="row" spacing={2}>
-            <TextField label="Rated power (kW)" fullWidth value={form.ratedPower} onChange={field("ratedPower")} />
-            <TextField label="Energy delivered (kWh)" fullWidth value={form.energyKwh} onChange={field("energyKwh")} />
-          </Stack>
-
-          <Stack direction="row" spacing={2}>
-            <TextField label="Service age (years)" fullWidth value={form.serviceAge} onChange={field("serviceAge")} />
             <TextField
-              label="Telemetry period"
-              select
+              label="Site ID"
               fullWidth
-              value={form.telemetryPeriodSec}
-              onChange={field("telemetryPeriodSec")}
-            >
-              {PERIOD_OPTIONS.map((o) => (
-                <MenuItem key={o.value} value={o.value}>
-                  {o.label}
-                </MenuItem>
-              ))}
-            </TextField>
+              value={form.siteId}
+              onChange={field("siteId")}
+              helperText="Groups devices at one location (like a folder). Reuse it for devices in the same place."
+            />
           </Stack>
+
+          <TextField
+            label="How often it reports"
+            select
+            fullWidth
+            value={form.telemetryPeriodSec}
+            onChange={field("telemetryPeriodSec")}
+            helperText="How frequently the device sends a reading to the server."
+          >
+            {PERIOD_OPTIONS.map((o) => (
+              <MenuItem key={o.value} value={o.value}>
+                {o.label}
+              </MenuItem>
+            ))}
+          </TextField>
 
           <Divider textAlign="left">
             <Typography variant="caption" color="text.secondary">
-              Location
+              Location (optional)
             </Typography>
           </Divider>
 
-          <Stack direction="row" spacing={2}>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
             <TextField label="Latitude" fullWidth value={form.lat} onChange={field("lat")} />
             <TextField label="Longitude" fullWidth value={form.lon} onChange={field("lon")} />
           </Stack>
@@ -222,12 +232,6 @@ export default function DeviceDialog({ open, mode = "create", device, onClose, o
             onChange={field("address")}
           />
 
-          <Divider textAlign="left">
-            <Typography variant="caption" color="text.secondary">
-              Lifecycle
-            </Typography>
-          </Divider>
-
           <TextField
             label="Expiry date (optional)"
             type="date"
@@ -237,6 +241,42 @@ export default function DeviceDialog({ open, mode = "create", device, onClose, o
             InputLabelProps={{ shrink: true }}
             helperText="Leave empty for no expiry. After this date the device is archived automatically."
           />
+
+          <Link
+            component="button"
+            type="button"
+            underline="none"
+            onClick={() => setShowAdvanced((v) => !v)}
+            sx={{ display: "inline-flex", alignItems: "center", gap: 0.5, alignSelf: "flex-start" }}
+          >
+            {showAdvanced ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+            Advanced (optional — for the AI life estimate)
+          </Link>
+          <Collapse in={showAdvanced} unmountOnExit>
+            <Stack spacing={2}>
+              <Alert severity="info" sx={{ py: 0.5 }}>
+                These fields are optional. They only refine the AI “remaining useful life” estimate —
+                voltage-unbalance monitoring works without them. Safe to leave blank.
+              </Alert>
+              <TextField
+                label="Equipment type"
+                select
+                fullWidth
+                value={form.deviceType}
+                onChange={field("deviceType")}
+                helperText="Only nudges the AI's aging model. Leave as Generic if unsure."
+              >
+                <MenuItem value="generic">Generic / other</MenuItem>
+                <MenuItem value="pv_inverter">Solar (PV) inverter</MenuItem>
+                <MenuItem value="telecom_rect">Telecom rectifier</MenuItem>
+              </TextField>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                <TextField label="Rated power (kW)" fullWidth value={form.ratedPower} onChange={field("ratedPower")} />
+                <TextField label="Energy delivered (kWh)" fullWidth value={form.energyKwh} onChange={field("energyKwh")} />
+              </Stack>
+              <TextField label="Service age (years)" fullWidth value={form.serviceAge} onChange={field("serviceAge")} />
+            </Stack>
+          </Collapse>
         </Stack>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2.5 }}>
