@@ -24,11 +24,26 @@ import {
   Paper,
 } from "@mui/material";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
+import { PenLine, Sparkles } from "lucide-react";
 import Nomogram from "../components/Nomogram.jsx";
 import { k2uFromVoltages, lineFromPhaseNominal } from "../lib/k2u.js";
 import { parseCsv, toReadings } from "../lib/csv.js";
+import PageHeader from "../components/PageHeader.jsx";
 
 const STATUS_COLORS = { NORMAL: "success", WARNING: "warning", CRITICAL: "error" };
+
+const SAMPLE_CSV = "site_id,dev_id,ts,u_a,u_b,u_c,temp,load_factor";
+
+/** Worked example used by the "Load sample" button: a mild, realistic unbalance. */
+const SAMPLE_READING = {
+  siteId: "UZ-PV-01",
+  devId: "K2U-02",
+  ua: "230",
+  ub: "223",
+  uc: "226",
+  temp: "42",
+  loadFactor: "0.7",
+};
 
 /** Parse a text-field value to a finite number, or NaN if it isn't one. */
 function toNumberOrNaN(value) {
@@ -92,6 +107,19 @@ function ManualReadingCard() {
     return { x: line.ubc / line.uab, y: line.uca / line.uab };
   }, [line]);
 
+  function loadSample() {
+    setMode("phase");
+    setSiteId(SAMPLE_READING.siteId);
+    setDevId(SAMPLE_READING.devId);
+    setTs(nowLocalIso());
+    setTemp(SAMPLE_READING.temp);
+    setLoadFactor(SAMPLE_READING.loadFactor);
+    setUa(SAMPLE_READING.ua);
+    setUb(SAMPLE_READING.ub);
+    setUc(SAMPLE_READING.uc);
+    setResult(null);
+  }
+
   async function handleSubmit() {
     setResult(null);
 
@@ -145,7 +173,15 @@ function ManualReadingCard() {
 
   return (
     <Card sx={{ height: "100%" }}>
-      <CardHeader title="Manual reading" />
+      <CardHeader
+        title="Manual reading"
+        subheader="Enter a single reading, or load a worked example"
+        action={
+          <Button size="small" startIcon={<Sparkles size={15} />} onClick={loadSample}>
+            Load sample
+          </Button>
+        }
+      />
       <CardContent>
         <Stack spacing={2}>
           <ToggleButtonGroup
@@ -320,6 +356,23 @@ function CsvImportCard() {
           <Typography variant="body2" color="text.secondary">
             Columns: site_id, dev_id, ts, u_a/u_b/u_c (or u_ab/u_bc/u_ca), temp, load_factor.
           </Typography>
+          <Box
+            component="pre"
+            sx={{
+              m: 0,
+              p: 1.25,
+              borderRadius: 1.5,
+              bgcolor: "grey.100",
+              border: "1px solid",
+              borderColor: "divider",
+              fontSize: "0.75rem",
+              fontFamily: "ui-monospace, Menlo, Consolas, monospace",
+              overflowX: "auto",
+              color: "text.secondary",
+            }}
+          >
+            {SAMPLE_CSV}
+          </Box>
 
           <Button component="label" variant="outlined" startIcon={<UploadFileIcon />}>
             {fileName || "Choose CSV file"}
@@ -372,9 +425,11 @@ function CsvImportCard() {
 export default function ManualEntry() {
   return (
     <Box>
-      <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>
-        Manual data entry
-      </Typography>
+      <PageHeader
+        icon={<PenLine size={22} />}
+        title="Manual data entry"
+        subtitle="Submit a single reading or bulk-import a CSV export from a logger."
+      />
       <Grid container spacing={2}>
         <Grid item xs={12} md={6}>
           <ManualReadingCard />

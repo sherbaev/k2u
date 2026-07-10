@@ -12,6 +12,7 @@ import {
   FormControl,
   InputLabel,
 } from "@mui/material";
+import { LayoutDashboard, Radio, ShieldCheck, BellRing, TrendingUp } from "lucide-react";
 import { useLive } from "../lib/useLive.js";
 import { api } from "../lib/api.js";
 import Nomogram from "../components/Nomogram.jsx";
@@ -20,6 +21,8 @@ import VoltageChart from "../components/VoltageChart.jsx";
 import AlertsPanel from "../components/AlertsPanel.jsx";
 import GostPanel from "../components/GostPanel.jsx";
 import RulPanel from "../components/RulPanel.jsx";
+import PageHeader from "../components/PageHeader.jsx";
+import StatCard from "../components/StatCard.jsx";
 
 function ratios(t) {
   if (!t || !t.u_ab) return null;
@@ -33,6 +36,8 @@ export default function Dashboard() {
   const [aggregates, setAggregates] = useState([]);
   const [prediction, setPrediction] = useState(null);
   const [seedEvents, setSeedEvents] = useState([]);
+  const [devices, setDevices] = useState([]);
+  const [sites, setSites] = useState([]);
 
   // Auto-select the first device that appears.
   useEffect(() => {
@@ -46,6 +51,43 @@ export default function Dashboard() {
     api.predictions({ devId, limit: 1 }).then((p) => setPrediction(p?.[0] ?? null)).catch(() => {});
     api.events({ devId, limit: 100 }).then(setSeedEvents).catch(() => {});
   }, [devId]);
+
+  // Fleet-wide device/site registry for the summary stat cards.
+  useEffect(() => {
+    api.devices().then((d) => setDevices(Array.isArray(d) ? d : [])).catch(() => {});
+    api.sites().then((s) => setSites(Array.isArray(s) ? s : [])).catch(() => {});
+  }, []);
+
+  const stats = useMemo(() => {
+    const k2uValues = Object.values(latest)
+      .map((t) => t?.k2u)
+      .filter((v) => Number.isFinite(v));
+    const worstK2u = k2uValues.length ? Math.max(...k2uValues) : null;
+
+    const siteIdByDev = {};
+    for (const d of devices) siteIdByDev[d.devId] = d.siteId;
+    const criticalSites = new Set();
+    for (const [dev, t] of Object.entries(latest)) {
+      if (t?.status === "CRITICAL") {
+        const sId = siteIdByDev[dev];
+        if (sId) criticalSites.add(sId);
+      }
+    }
+    const totalSites = sites.length;
+    const compliantSites = Math.max(0, totalSites - criticalSites.size);
+
+    const activeAlerts = events.filter(
+      (e) => (e.type === "WARNING" || e.type === "CRITICAL") && !e.ackAt,
+    ).length;
+
+    return {
+      deviceCount: devices.length || devIds.length,
+      worstK2u,
+      compliantSites,
+      totalSites,
+      activeAlerts,
+    };
+  }, [devices, sites, latest, events, devIds.length]);
 
   const telemetry = devId ? latest[devId] : null;
   const point = ratios(telemetry);
@@ -65,22 +107,68 @@ export default function Dashboard() {
 
   return (
     <Box>
-      <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
-        <FormControl size="small" sx={{ minWidth: 200 }}>
-          <InputLabel>Device</InputLabel>
-          <Select label="Device" value={devId ?? ""} onChange={(e) => setDevId(e.target.value)}>
-            {devIds.length === 0 && <MenuItem value="">(waiting…)</MenuItem>}
-            {devIds.map((d) => (
-              <MenuItem key={d} value={d}>{d}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        <Chip
-          size="small"
-          color={connected ? "success" : "default"}
-          label={connected ? "live" : "disconnected"}
-        />
-      </Stack>
+      <PageHeader
+        icon={<LayoutDashboard size={22} />}
+        title="Overview"
+        subtitle="Fleet-wide K₂U status, live nomogram and GOST 32144-2013 compliance for the selected device."
+        actions={
+          <Stack direction="row" spacing={2} alignItems="center">
+            <FormControl size="small" sx={{ minWidth: 200 }}>
+              <InputLabel>Device</InputLabel>
+              <Select label="Device" value={devId ?? ""} onChange={(e) => setDevId(e.target.value)}>
+                {devIds.length === 0 && <MenuItem value="">(waiting…)</MenuItem>}
+                {devIds.map((d) => (
+                  <MenuItem key={d} value={d}>{d}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Chip
+              size="small"
+              color={connected ? "success" : "default"}
+              label={connected ? "live" : "disconnected"}
+            />
+          </Stack>
+        }
+      />
+
+      <Grid container spacing={2} sx={{ mb: 1 }}>
+        <Grid item xs={12} sm={6} lg={3}>
+          <StatCard
+            icon={<Radio size={20} />}
+            label="Devices"
+            value={stats.deviceCount}
+            hint="Registered monitoring units"
+            tone="primary"
+          />
+        </Grid>
+        <Grid item xs={12} sm={6} lg={3}>
+          <StatCard
+            icon={<TrendingUp size={20} />}
+            label="Worst K₂U now"
+            value={stats.worstK2u !== null ? `${stats.worstK2u.toFixed(2)}%` : "—"}
+            hint="Across all live devices"
+            tone={stats.worstK2u > 4 ? "error" : stats.worstK2u > 2 ? "warning" : "success"}
+          />
+        </Grid>
+        <Grid item xs={12} sm={6} lg={3}>
+          <StatCard
+            icon={<ShieldCheck size={20} />}
+            label="Sites in compliance"
+            value={`${stats.compliantSites}/${stats.totalSites || 0}`}
+            hint="GOST 32144-2013"
+            tone={stats.compliantSites === stats.totalSites ? "success" : "warning"}
+          />
+        </Grid>
+        <Grid item xs={12} sm={6} lg={3}>
+          <StatCard
+            icon={<BellRing size={20} />}
+            label="Active alerts"
+            value={stats.activeAlerts}
+            hint="Unacknowledged warnings/critical"
+            tone={stats.activeAlerts > 0 ? "warning" : "success"}
+          />
+        </Grid>
+      </Grid>
 
       <Grid container spacing={2}>
         <Grid item xs={12} md={7} lg={6}>

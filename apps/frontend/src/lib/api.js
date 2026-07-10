@@ -14,4 +14,6 @@ export const api = {
   events: (params) => http.get("/api/events", { params }).then((r) => r.data),
   predictions: (params) => http.get("/api/predictions", { params }).then((r) => r.data),
   compliance: (params) => http.get("/api/compliance", { params }).then((r) => r.data),
+  createDevice: (body) => http.post("/api/devices", body).then((r) => r.data),
+  createSite: (body) => http.post("/api/sites", body).then((r) => r.data),
 };

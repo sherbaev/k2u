@@ -14,8 +14,10 @@ RUN pnpm --filter @k2u/frontend run build
 
 # ---------- Runner ----------
 FROM nginx:alpine AS runner
-# Default backend for docker-compose; override per-app in Coolify (BACKEND_UPSTREAM).
+# Defaults for docker-compose; override per-app in Coolify.
+# BACKEND_UPSTREAM = proxy target origin; BACKEND_HOST = Host header for routing.
 ENV BACKEND_UPSTREAM=http://backend:3000
+ENV BACKEND_HOST=backend:3000
 # nginx image auto-runs envsubst on /etc/nginx/templates/*.template at start.
 COPY apps/frontend/nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=builder /workspace/apps/frontend/dist /usr/share/nginx/html

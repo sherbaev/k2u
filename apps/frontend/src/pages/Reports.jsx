@@ -26,6 +26,7 @@ import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import TableChartIcon from "@mui/icons-material/TableChart";
 import FolderZipIcon from "@mui/icons-material/FolderZip";
+import { FileText } from "lucide-react";
 import { DayPicker } from "react-day-picker";
 import "react-day-picker/style.css";
 import { format, subDays, startOfDay, endOfDay } from "date-fns";
@@ -33,6 +34,7 @@ import { api } from "../lib/api.js";
 import { buildReport } from "../lib/report.js";
 import { downloadPdf } from "../lib/pdf.js";
 import { downloadCsv, downloadReportZip } from "../lib/zipExport.js";
+import PageHeader from "../components/PageHeader.jsx";
 
 const VERDICT_COLOR = { PASS: "success", MARGINAL: "warning", FAIL: "error", "N/A": "default" };
 
@@ -132,9 +134,11 @@ export default function Reports() {
 
   return (
     <Box>
-      <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
-        GOST compliance reports
-      </Typography>
+      <PageHeader
+        icon={<FileText size={22} />}
+        title="GOST compliance reports"
+        subtitle="Weekly K₂U percentile rollups per GOST 32144-2013, exportable as PDF, CSV or ZIP."
+      />
 
       <Card sx={{ mb: 2 }}>
         <CardContent>

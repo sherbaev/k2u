@@ -1,5 +1,6 @@
-import { Body, Controller, Get, Param, Post, Query } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from "@nestjs/common";
 import { ApiService, type RangeQuery } from "./api.service.js";
+import { JwtAuthGuard } from "../auth/jwt.guard.js";
 import { AlertsService } from "../alerts/alerts.service.js";
 import { ComplianceService } from "../compliance/compliance.service.js";
 import { PredictionsService } from "../predictions/predictions.service.js";
@@ -23,9 +24,21 @@ export class ApiController {
     return this.api.listSites();
   }
 
+  @Post("sites")
+  @UseGuards(JwtAuthGuard)
+  createSite(@Body() body: Record<string, unknown>) {
+    return this.api.upsertSite(body);
+  }
+
   @Get("devices")
   devices(@Query("siteId") siteId?: string) {
     return this.api.listDevices(siteId);
+  }
+
+  @Post("devices")
+  @UseGuards(JwtAuthGuard)
+  createDevice(@Body() body: Record<string, unknown>) {
+    return this.api.upsertDevice(body);
   }
 
   @Get("latest")

@@ -35,6 +35,16 @@ export class ApiService {
     return this.devices.find(siteId ? { siteId } : {}).lean();
   }
 
+  upsertSite(body: Record<string, unknown>) {
+    const { siteId, ...rest } = body;
+    return this.sites.findOneAndUpdate({ siteId }, { $set: { siteId, ...rest } }, { upsert: true, new: true }).lean();
+  }
+
+  upsertDevice(body: Record<string, unknown>) {
+    const { devId, ...rest } = body;
+    return this.devices.findOneAndUpdate({ devId }, { $set: { devId, ...rest } }, { upsert: true, new: true }).lean();
+  }
+
   /** Latest telemetry point for one device, or for every device. */
   async latest(devId?: string) {
     if (devId) {
