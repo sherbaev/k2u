@@ -15,5 +15,10 @@ module.exports = (options) => ({
     ...options.resolve,
     // Resolve the workspace TS sources (matches backend tsconfig paths).
     extensions: [".ts", ".js", ".json"],
+    // NodeNext-style imports use explicit ".js" extensions that actually point
+    // at ".ts" sources — let webpack/ts-loader resolve them.
+    extensionAlias: {
+      ".js": [".ts", ".js"],
+    },
   },
 });

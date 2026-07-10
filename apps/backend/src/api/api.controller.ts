@@ -54,7 +54,7 @@ export class ApiController {
   }
 
   @Get("compliance")
-  compliance(@Query("devId") devId?: string, @Query("siteId") siteId?: string) {
+  listCompliance(@Query("devId") devId?: string, @Query("siteId") siteId?: string) {
     return this.compliance.list(devId, siteId);
   }
 

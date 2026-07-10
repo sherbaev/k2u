@@ -33,13 +33,13 @@ export function computeReading(r: RawReading): ComputedReading {
       const line = lineFromPhaseNominal(ua, ub, uc);
       uab = line.uab; ubc = line.ubc; uca = line.uca;
     } else {
-      return { ok: false, error: "need all three line or all three phase voltages", uab: 0, ubc: 0, uca: 0, k2u: NaN, phi2: NaN, status: "CRITICAL" };
+      return { ok: false, error: "need all three line or all three phase voltages", u_ab: 0, u_bc: 0, u_ca: 0, k2u: NaN, phi2: NaN, status: "CRITICAL" };
     }
   }
 
   const res = k2uFromVoltages(uab!, ubc!, uca!);
   if (!res.valid) {
-    return { ok: false, error: "voltages do not form a valid triangle", uab: uab!, ubc: ubc!, uca: uca!, k2u: NaN, phi2: NaN, status: "CRITICAL" };
+    return { ok: false, error: "voltages do not form a valid triangle", u_ab: uab!, u_bc: ubc!, u_ca: uca!, k2u: NaN, phi2: NaN, status: "CRITICAL" };
   }
   return {
     ok: true,
