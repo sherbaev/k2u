@@ -9,7 +9,7 @@ FROM node:20-alpine AS builder
 WORKDIR /workspace
 RUN corepack enable
 COPY . .
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --no-frozen-lockfile
 RUN pnpm --filter @k2u/frontend run build
 
 # ---------- Runner ----------

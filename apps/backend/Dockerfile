@@ -26,7 +26,9 @@ RUN corepack enable
 # (@k2u/shared-contracts, @k2u/core) are resolvable.
 COPY . .
 
-RUN pnpm install --frozen-lockfile
+# No committed lockfile yet — resolve at build time. Commit a pnpm-lock.yaml
+# later and switch back to --frozen-lockfile for reproducible builds.
+RUN pnpm install --no-frozen-lockfile
 
 # Build the backend app (NestJS: nest build -> apps/backend/dist).
 RUN pnpm --filter @k2u/backend run build
