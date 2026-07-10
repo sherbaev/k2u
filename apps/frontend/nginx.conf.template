@@ -4,6 +4,7 @@
 # resolving lazily per request instead of failing at boot.
 server {
   listen 80;
+  listen [::]:80;          # dual-stack: healthchecks resolve localhost -> ::1
   server_name _;
   root /usr/share/nginx/html;
   index index.html;
@@ -13,6 +14,13 @@ server {
 
   gzip on;
   gzip_types text/css application/javascript application/json image/svg+xml;
+
+  # Lightweight healthcheck endpoint (any path/probe passes).
+  location = /health {
+    access_log off;
+    add_header Content-Type text/plain;
+    return 200 "ok";
+  }
 
   # SPA routing.
   location / {
