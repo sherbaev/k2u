@@ -14,7 +14,10 @@ RUN pnpm --filter @k2u/frontend run build
 
 # ---------- Runner ----------
 FROM nginx:alpine AS runner
-COPY apps/frontend/nginx.conf /etc/nginx/conf.d/default.conf
+# Default backend for docker-compose; override per-app in Coolify (BACKEND_UPSTREAM).
+ENV BACKEND_UPSTREAM=http://backend:3000
+# nginx image auto-runs envsubst on /etc/nginx/templates/*.template at start.
+COPY apps/frontend/nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=builder /workspace/apps/frontend/dist /usr/share/nginx/html
 EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
