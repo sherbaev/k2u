@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Grid, Card, CardContent, Typography, Box, Chip, Stack, MenuItem, Select, FormControl, InputLabel } from "@mui/material";
 import { LayoutDashboard, Radio, ShieldCheck, BellRing, TrendingUp } from "lucide-react";
 import NomogramLegend from "../components/NomogramLegend.jsx";
+import CapturePanel from "../components/CapturePanel.jsx";
 import { useLive } from "../lib/useLive.js";
 import { api } from "../lib/api.js";
 import Nomogram from "../components/Nomogram.jsx";
@@ -177,67 +178,79 @@ export default function Dashboard() {
         </Grid>
       </Grid>
 
-      {/* Centerpiece row: prominent draggable nomogram + interactive analyzer */}
+      {/* Centerpiece: stacked (top/bottom) so both are large & readable */}
       <Grid container spacing={2} sx={{ mt: 0.25 }}>
-        <Grid item xs={12} lg={6}>
-          <Card sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
-            <CardContent sx={{ display: "flex", flexDirection: "column", flexGrow: 1 }}>
-              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                  K₂U polar nomogram
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {devId || "no device"}
-                </Typography>
-              </Stack>
-              <Box
-                sx={{
-                  flexGrow: 1,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  py: 1,
-                  minWidth: 0,
-                }}
-              >
+        <Grid item xs={12}>
+          <CapturePanel filename="k2u-nomogram">
+            <Card sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
+              <CardContent sx={{ display: "flex", flexDirection: "column", flexGrow: 1 }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                    K₂U polar nomogram
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ mr: 5 }}>
+                    {devId || "no device"}
+                  </Typography>
+                </Stack>
                 <Box
                   sx={{
-                    width: "100%",
-                    maxWidth: { xs: 340, sm: 460, md: 500, lg: 520 },
-                    aspectRatio: "1 / 1",
-                    mx: "auto",
+                    flexGrow: 1,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    py: 1,
+                    minWidth: 0,
                   }}
                 >
-                  <Nomogram point={analyzerPoint} trail={trail} onPoint={handleNomogramDrag} />
+                  <Box
+                    sx={{
+                      width: "100%",
+                      maxWidth: { xs: 360, sm: 520, md: 600, lg: 640 },
+                      aspectRatio: "1 / 1",
+                      mx: "auto",
+                    }}
+                  >
+                    <Nomogram point={analyzerPoint} trail={trail} onPoint={handleNomogramDrag} />
+                  </Box>
                 </Box>
-              </Box>
-              <Typography variant="caption" color="text.secondary" sx={{ display: "block", textAlign: "center" }}>
-                Drag the operating point to explore K₂U — iso-K₂U contours (2–14%) with GOST 2%/4% zones; faint trail is device history.
-              </Typography>
-              <NomogramLegend />
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} lg={6}>
-          <K2uAnalyzer telemetry={telemetry} onPointChange={setAnalyzerPoint} externalLineVoltages={dragVoltages} />
-        </Grid>
-      </Grid>
-
-      {/* Compact supporting grid */}
-      <Grid container spacing={2} sx={{ mt: 0.25 }}>
-        <Grid item xs={12} md={6} lg={4}>
-          <OperatingPointCard telemetry={telemetry} />
-        </Grid>
-        <Grid item xs={12} md={6} lg={4}>
-          <RulPanel prediction={prediction} />
-        </Grid>
-        <Grid item xs={12} md={12} lg={4}>
-          <GostPanel aggregates={aggregates} />
+                <Typography variant="caption" color="text.secondary" sx={{ display: "block", textAlign: "center" }}>
+                  Drag the operating point to explore K₂U — iso-K₂U contours (2–14%) with GOST 2%/4% zones; faint trail is device history.
+                </Typography>
+                <NomogramLegend />
+              </CardContent>
+            </Card>
+          </CapturePanel>
         </Grid>
 
         <Grid item xs={12}>
-          <VoltageChart history={devHistory} />
+          <CapturePanel filename="k2u-analyzer">
+            <K2uAnalyzer telemetry={telemetry} onPointChange={setAnalyzerPoint} externalLineVoltages={dragVoltages} />
+          </CapturePanel>
+        </Grid>
+      </Grid>
+
+      {/* Supporting graphs — each capturable as a figure */}
+      <Grid container spacing={2} sx={{ mt: 0.25 }}>
+        <Grid item xs={12} md={6} lg={4}>
+          <CapturePanel filename="operating-point">
+            <OperatingPointCard telemetry={telemetry} />
+          </CapturePanel>
+        </Grid>
+        <Grid item xs={12} md={6} lg={4}>
+          <CapturePanel filename="remaining-useful-life">
+            <RulPanel prediction={prediction} />
+          </CapturePanel>
+        </Grid>
+        <Grid item xs={12} md={12} lg={4}>
+          <CapturePanel filename="gost-compliance">
+            <GostPanel aggregates={aggregates} />
+          </CapturePanel>
+        </Grid>
+
+        <Grid item xs={12}>
+          <CapturePanel filename="voltage-k2u-timeseries">
+            <VoltageChart history={devHistory} />
+          </CapturePanel>
         </Grid>
 
         <Grid item xs={12}>
